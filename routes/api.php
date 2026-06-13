@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\InspectionBookingController;
+use App\Http\Controllers\Settings\SettingsController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Faq\FaqController;
@@ -30,10 +31,8 @@ Route::prefix('v1')->group(function () {
     Route::post('reset-password', [AuthController::class, 'resetPassword']);
 
 
-
-
 //Faq Route
-  
+
     Route::get('/faqs', [FaqController::class, 'index']);
     Route::post('/faqs', [FaqController::class, 'store']);
     Route::get('/faqs/{id}', [FaqController::class, 'show']);
@@ -42,14 +41,19 @@ Route::prefix('v1')->group(function () {
 
 //Help and  Support Request Route
 
-Route::post('/support-request', [SupportRequestController::class, 'store']);
+    Route::post('/support-request', [SupportRequestController::class, 'store']);
 
-Route::prefix('admin')->group(function () {
-    Route::get('/support', [SupportRequestController::class, 'index']);
-    Route::get('/support/{id}', [SupportRequestController::class, 'show']);
-    Route::post('/support/{id}/reply', [SupportRequestController::class, 'reply']);
-    Route::delete('/support/{id}', [SupportRequestController::class, 'destroy']);
-});
+    Route::prefix('admin')->group(function () {
+        Route::get('/support', [SupportRequestController::class, 'index']);
+        Route::get('/support/{id}', [SupportRequestController::class, 'show']);
+        Route::post('/support/{id}/reply', [SupportRequestController::class, 'reply']);
+        Route::delete('/support/{id}', [SupportRequestController::class, 'destroy']);
+    });
+
+    //Settings
+    Route::get('settings', [SettingsController::class, 'show']);
+    Route::post('settings', [SettingsController::class, 'createOrUpdate']);
+
 
     Route::middleware('auth:sanctum')->group(function () {
 
@@ -63,9 +67,9 @@ Route::prefix('admin')->group(function () {
 
         Route::get('/my-inspections', [InspectionBookingController::class, 'index']);
 
-        });
-
     });
-    // Route::get('/user', function (Request $request) {
-    //     return $request->user();
-    // })->middleware('auth:sanctum');
+
+});
+// Route::get('/user', function (Request $request) {
+//     return $request->user();
+// })->middleware('auth:sanctum');
