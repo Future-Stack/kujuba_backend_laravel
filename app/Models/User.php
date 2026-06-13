@@ -29,6 +29,14 @@ class User extends Authenticatable
         'user_type', 
     ];
 
+
+
+    //profile
+    public function profile()
+{
+    return $this->hasOne(Profile::class);
+}
+
     /**
      * The attributes that should be hidden for serialization.
      *
@@ -51,5 +59,10 @@ class User extends Authenticatable
             'otp_expire_at' => 'datetime', 
             'password' => 'hashed',
         ];
+    }
+
+    public function profile()
+    {
+        return $this->hasOne(Profile::class, 'user_id');
     }
 }

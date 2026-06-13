@@ -6,5 +6,16 @@ use Illuminate\Database\Eloquent\Model;
 
 class SupportRequest extends Model
 {
-    protected $fillable = ['user_id','title','explanation','status','reply'];
+    protected $fillable = [
+        'user_id',
+        'title',
+        'explanation',
+        'status',
+        'reply'
+    ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }
