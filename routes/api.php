@@ -6,6 +6,13 @@ use Illuminate\Support\Facades\Route;
 
 
 Route::prefix('v1')->group(function () {
+    Route::get('/', function () {
+        return response()->json([
+            'message' => 'Welcome to API v1',
+            'status' => 'ok',
+            'version' => '1.0'
+        ]);
+    });
 
     // ----------------------------
     // Public Routes
