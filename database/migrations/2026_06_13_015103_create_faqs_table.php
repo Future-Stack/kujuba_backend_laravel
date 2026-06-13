@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('question', 255);
             $table->string('answers', 255);
             $table->tinyInteger('status')->default(1);
+            $table->softDeletes();
             $table->timestamps();
         });
     }
