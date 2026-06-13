@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "01bcb108264983d4a2b7c651e77a5008",
+    "content-hash": "c484757e81339b63722124fa33521a23",
     "packages": [
         {
             "name": "brick/math",
@@ -974,16 +974,16 @@
         },
         {
             "name": "guzzlehttp/uri-template",
-            "version": "v1.0.6",
+            "version": "v1.0.7",
             "source": {
                 "type": "git",
                 "url": "https://github.com/guzzle/uri-template.git",
-                "reference": "eef7f87bab6f204eba3c39224d8075c70c637946"
+                "reference": "7fe811c23a9e3cd712b4389eaeb50b5456d8c529"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/guzzle/uri-template/zipball/eef7f87bab6f204eba3c39224d8075c70c637946",
-                "reference": "eef7f87bab6f204eba3c39224d8075c70c637946",
+                "url": "https://api.github.com/repos/guzzle/uri-template/zipball/7fe811c23a9e3cd712b4389eaeb50b5456d8c529",
+                "reference": "7fe811c23a9e3cd712b4389eaeb50b5456d8c529",
                 "shasum": ""
             },
             "require": {
@@ -1040,7 +1040,7 @@
             ],
             "support": {
                 "issues": "https://github.com/guzzle/uri-template/issues",
-                "source": "https://github.com/guzzle/uri-template/tree/v1.0.6"
+                "source": "https://github.com/guzzle/uri-template/tree/v1.0.7"
             },
             "funding": [
                 {
@@ -1056,7 +1056,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-05-23T22:00:21+00:00"
+            "time": "2026-06-12T21:33:43+00:00"
         },
         {
             "name": "laravel/framework",
@@ -2087,6 +2087,55 @@
                 }
             ],
             "time": "2026-03-08T20:05:35+00:00"
+        },
+        {
+            "name": "mahbubur508/api-auth",
+            "version": "v1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/mahbubur508/api-auth.git",
+                "reference": "5133266bcd305280ff3a119d1eec65a9795760ad"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/mahbubur508/api-auth/zipball/5133266bcd305280ff3a119d1eec65a9795760ad",
+                "reference": "5133266bcd305280ff3a119d1eec65a9795760ad",
+                "shasum": ""
+            },
+            "require": {
+                "laravel/framework": "^10.0|^11.0|^12.0",
+                "laravel/sanctum": "^3.0|^4.0",
+                "php": "^8.2"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Mahbubur508\\ApiAuth\\Providers\\ApiAuthServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Mahbubur508\\ApiAuth\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Md. Mahbubur Rahman",
+                    "email": "your-email@example.com"
+                }
+            ],
+            "description": "A robust and fast REST API Authentication package for Laravel using Sanctum.",
+            "support": {
+                "issues": "https://github.com/mahbubur508/api-auth/issues",
+                "source": "https://github.com/mahbubur508/api-auth/tree/v1.0.0"
+            },
+            "time": "2026-06-10T03:57:10+00:00"
         },
         {
             "name": "monolog/monolog",
