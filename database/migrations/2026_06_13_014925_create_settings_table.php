@@ -14,16 +14,16 @@ return new class extends Migration
         Schema::create('settings', function (Blueprint $table) {
             $table->id();
             $table->string('platform_name');
-            $table->string('support_mail');
-            $table->integer('max_inspector_area');
-            $table->integer('inspector_response_time');
-            $table->integer('urgent_booking_lead');
-            $table->integer('report_deadline');
-            $table->decimal('platform_commission', 5, 2);
+            $table->string('support_mail')->nullable();
+            $table->integer('max_inspector_area')->default(0);
+            $table->integer('inspector_response_time')->default(30)->comment('minutes');
+            $table->integer('urgent_booking_lead')->default(4)->comment('hours');
+            $table->integer('report_deadline')->default(48)->comment('hours');
+            $table->decimal('platform_commission', 5, 2)->default(20)->comment('percent');
             $table->boolean('auto_approve')->default(false);
-            $table->decimal('urgent_inspection_fee', 10, 2)->nullable();
-            $table->decimal('late_cancellation_penalty', 10, 2)->nullable();
-            $table->decimal('last_minute_cancel_penalty', 10, 2)->nullable();
+            $table->decimal('urgent_inspection_fee', 10, 2)->default(50);
+            $table->decimal('late_cancellation_penalty', 10, 2)->default(50);
+            $table->decimal('last_minute_cancel_penalty', 10, 2)->default(75);
             $table->timestamps();
         });
     }
