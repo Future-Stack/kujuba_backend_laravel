@@ -49,73 +49,101 @@ class SupportRequestController extends Controller
      * Admin - All Support Requests
      */
     public function index()
-    {
-        try {
+{
+    try {
 
-            $supports = SupportRequest::with([
-                'user.profile'
-            ])->latest()->get();
+        $supports = SupportRequest::with(['user.profile'])
+            ->latest()
+            ->get()
+            ->map(function ($item) {
 
-            return response()->json([
-                'success' => true,
-                'data' => $supports
-            ]);
+                return [
+                    'id' => $item->id,
+                    'title' => $item->title,
+                    'explanation' => $item->explanation,
+                    'status' => $item->status,
+                    'reply' => $item->reply,
 
-        } catch (\Exception $e) {
+                    'user' => [
+                        'id' => $item->user->id,
+                        'name' => trim(
+                            $item->user->first_name . ' ' . ($item->user->last_name ?? '')
+                        ),
+                        'email' => $item->user->email,
+                        'user_type' => $item->user->user_type,
 
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 500);
+                        // FULL IMAGE URL FIXED
+                        'image' => $item->user->profile && $item->user->profile->profile_img
+                            ? asset('storage/' . $item->user->profile->profile_img)
+                            : null,
 
-        }
+                        'phone' => $item->user->profile->phone ?? null,
+                    ],
+
+                    'created_at' => $item->created_at,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $supports
+        ]);
+
+    } catch (\Exception $e) {
+
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage(),
+        ], 500);
     }
+}
 
     /**
      * Admin - Single Support Request
      */
     public function show($id)
-    {
-        try {
+{
+    try {
 
-            $support = SupportRequest::with([
-                'user.profile'
-            ])->findOrFail($id);
+        $support = SupportRequest::with(['user.profile'])->findOrFail($id);
 
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'id' => $support->id,
-                    'title' => $support->title,
-                    'explanation' => $support->explanation,
-                    'status' => $support->status,
-                    'reply' => $support->reply,
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $support->id,
+                'title' => $support->title,
+                'explanation' => $support->explanation,
+                'status' => $support->status,
+                'reply' => $support->reply,
 
-                    'user' => [
-                        'id' => $support->user->id,
-                        'name' => trim(
-                            $support->user->first_name . ' ' .
-                            ($support->user->last_name ?? '')
-                        ),
-                        'email' => $support->user->email,
-                        'user_type' => $support->user->user_type,
-                        'image' => $support->user->profile->profile_img ?? null,
-                        'phone' => $support->user->profile->phone ?? null,
-                    ],
+                'user' => [
+                    'id' => $support->user->id,
+                    'name' => trim(
+                        $support->user->first_name . ' ' . ($support->user->last_name ?? '')
+                    ),
+                    'email' => $support->user->email,
+                    'user_type' => $support->user->user_type,
 
-                    'created_at' => $support->created_at,
-                ]
-            ]);
+                    // FULL IMAGE URL FIXED
+                    'image' => $support->user->profile && $support->user->profile->profile_img
+                        ? asset('storage/' . $support->user->profile->profile_img)
+                        : null,
 
-        } catch (\Exception $e) {
+                    'phone' => $support->user->profile->phone ?? null,
+                ],
 
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 500);
+                'created_at' => $support->created_at,
+            ]
+        ]);
 
-        }
+    } catch (\Exception $e) {
+
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage(),
+        ], 500);
     }
+}
 
     /**
      * Admin Reply

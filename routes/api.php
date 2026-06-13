@@ -35,21 +35,11 @@ Route::prefix('v1')->group(function () {
 //Faq Route
   
     Route::get('/faqs', [FaqController::class, 'index']);
-    Route::post('/faqs', [FaqController::class, 'store']);
+    
     Route::get('/faqs/{id}', [FaqController::class, 'show']);
-    Route::put('/faqs/{id}', [FaqController::class, 'update']);
-    Route::delete('/faqs/{id}', [FaqController::class, 'destroy']);
+   
 
-//Help and  Support Request Route
 
-Route::post('/support-request', [SupportRequestController::class, 'store']);
-
-Route::prefix('admin')->group(function () {
-    Route::get('/support', [SupportRequestController::class, 'index']);
-    Route::get('/support/{id}', [SupportRequestController::class, 'show']);
-    Route::post('/support/{id}/reply', [SupportRequestController::class, 'reply']);
-    Route::delete('/support/{id}', [SupportRequestController::class, 'destroy']);
-});
 
     Route::middleware('auth:sanctum')->group(function () {
 
@@ -62,6 +52,24 @@ Route::prefix('admin')->group(function () {
         Route::post('/book-inspection', [InspectionBookingController::class, 'store']);
 
         Route::get('/my-inspections', [InspectionBookingController::class, 'index']);
+
+
+       //FAQ
+       Route::post('/faqs', [FaqController::class, 'store']);
+
+        Route::put('/faqs/{id}', [FaqController::class, 'update']);
+        Route::delete('/faqs/{id}', [FaqController::class, 'destroy']);
+        
+            //Help and  Support Request Route
+
+            Route::post('/support-request', [SupportRequestController::class, 'store']);
+
+            Route::prefix('admin')->group(function () {
+                Route::get('/support', [SupportRequestController::class, 'index']);
+                Route::get('/support/{id}', [SupportRequestController::class, 'show']);
+                Route::post('/support/{id}/reply', [SupportRequestController::class, 'reply']);
+                Route::delete('/support/{id}', [SupportRequestController::class, 'destroy']);
+            });
 
         });
 
