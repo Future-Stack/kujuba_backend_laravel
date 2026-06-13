@@ -21,6 +21,7 @@ return new class extends Migration
             $table->integer('otp')->nullable();
             $table->timestamp('otp_expire_at')->nullable();
             $table->rememberToken();
+            $table->string('device_token')->nullable();
             $table->string('status')->default('pending')->comment('pending,active,suspended,suspended');
             $table->string('user_type')->nullable()->comment('customer,inspector,admin');
             $table->timestamps();
