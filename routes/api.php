@@ -4,6 +4,8 @@ use App\Http\Controllers\Faq\FaqController;
 use App\Http\Controllers\InspectionBookingController;
 use App\Http\Controllers\Settings\SettingsController;
 use App\Http\Controllers\Support\SupportRequestController;
+use App\Http\Controllers\User\AuthController;
+use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\InspectionTypeController;
 
 
@@ -52,6 +54,7 @@ Route::prefix('v1')->group(function () {
 
 
     Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/change-password', [AuthController::class, 'changePassword']);
 
         Route::post('logout', [AuthController::class, 'logout']);
 
@@ -65,8 +68,9 @@ Route::prefix('v1')->group(function () {
 
 
        //FAQ
+       Route::get('/faqs', [FaqController::class, 'index']);
        Route::post('/faqs', [FaqController::class, 'store']);
-
+        Route::get('/faqs/{id}', [FaqController::class, 'show']);
         Route::put('/faqs/{id}', [FaqController::class, 'update']);
         Route::delete('/faqs/{id}', [FaqController::class, 'destroy']);
 
@@ -81,17 +85,65 @@ Route::prefix('v1')->group(function () {
                 Route::delete('/support/{id}', [SupportRequestController::class, 'destroy']);
             });
 
-            //Inspection types
-            
-
-            Route::resource('inspection-types', InspectionTypeController::class);
-
+            //inspections types
+            Route::get('/inspection-types', [InspectionTypeController::class, 'index']);
+            Route::post('/inspection-types', [InspectionTypeController::class, 'store']);
+            Route::get('/inspection-types/{id}', [InspectionTypeController::class, 'show']);
+            Route::post('/inspection-types/{id}', [InspectionTypeController::class, 'update']); // POST update (your case)
+            Route::delete('/inspection-types/{id}', [InspectionTypeController::class, 'destroy']);
         });
 
+    //Rehana Mim
 
 
 
-    });
-    // Route::get('/user', function (Request $request) {
-    //     return $request->user();
-    // })->middleware('auth:sanctum');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    //Sabbir
+
+
+
+});
