@@ -26,6 +26,7 @@ class User extends Authenticatable
         'otp_expire_at', 
         'status',
         'user_type', 
+        'device_token',
     ];
 
     /**
