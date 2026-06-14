@@ -10,6 +10,7 @@ use App\Http\Controllers\Support\SupportRequestController;
 use App\Http\Controllers\User\AuthController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\InspectionTypeController;
+use App\Http\Controllers\User\GoogleAuthController;
 
 
 Route::prefix('v1')->group(function () {
@@ -32,6 +33,8 @@ Route::prefix('v1')->group(function () {
     Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
     Route::post('reset-password', [AuthController::class, 'resetPassword']);
+     // Google OAuth (public, no auth required)
+    Route::post('google/token', [GoogleAuthController::class, 'tokenLogin']);
 
 
 //Faq Route
