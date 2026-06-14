@@ -13,10 +13,12 @@ return new class extends Migration
     {
         Schema::create('reviews', function (Blueprint $table) {
             $table->id();
-             $table->integer('rating');
+            $table->decimal('rating');
             $table->foreignId('homeowner_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('inspection_assign_id')->constrained('inspection_assigns')->onDelete('cascade');
             $table->text('description')->nullable();
+            $table->string('status')->default('active')->comment('active,inactive,flagged');
+            $table->tinyInteger('suspendInspector')->default(0);
             $table->timestamps();
         });
     }

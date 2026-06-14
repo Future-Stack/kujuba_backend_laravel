@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Faq\FaqController;
 use App\Http\Controllers\InspectionBookingController;
+use App\Http\Controllers\Notification\NotificationPreferenceController;
 use App\Http\Controllers\Page\PageController;
+use App\Http\Controllers\Reviews\ReviewsController;
 use App\Http\Controllers\Settings\SettingsController;
 use App\Http\Controllers\Support\SupportRequestController;
 use App\Http\Controllers\User\AuthController;
@@ -51,11 +53,6 @@ Route::prefix('v1')->group(function () {
         Route::delete('/support/{id}', [SupportRequestController::class, 'destroy']);
     });
 
-    //Settings
-    Route::get('settings', [SettingsController::class, 'show']);
-    Route::post('settings', [SettingsController::class, 'createOrUpdate']);
-
-
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/change-password', [AuthController::class, 'changePassword']);
@@ -71,82 +68,51 @@ Route::prefix('v1')->group(function () {
         Route::get('/my-inspections', [InspectionBookingController::class, 'index']);
 
 
-       //FAQ
-       Route::get('/faqs', [FaqController::class, 'index']);
-       Route::post('/faqs', [FaqController::class, 'store']);
+        //FAQ
+        Route::get('/faqs', [FaqController::class, 'index']);
+        Route::post('/faqs', [FaqController::class, 'store']);
         Route::get('/faqs/{id}', [FaqController::class, 'show']);
         Route::put('/faqs/{id}', [FaqController::class, 'update']);
         Route::delete('/faqs/{id}', [FaqController::class, 'destroy']);
 
-            //Help and  Support Request Route
+        //Help and  Support Request Route
 
-            Route::post('/support-request', [SupportRequestController::class, 'store']);
+        Route::post('/support-request', [SupportRequestController::class, 'store']);
 
-            Route::prefix('admin')->group(function () {
-                Route::get('/support', [SupportRequestController::class, 'index']);
-                Route::get('/support/{id}', [SupportRequestController::class, 'show']);
-                Route::post('/support/{id}/reply', [SupportRequestController::class, 'reply']);
-                Route::delete('/support/{id}', [SupportRequestController::class, 'destroy']);
-            });
-
-            //inspections types
-            Route::get('/inspection-types', [InspectionTypeController::class, 'index']);
-            Route::post('/inspection-types', [InspectionTypeController::class, 'store']);
-            Route::get('/inspection-types/{id}', [InspectionTypeController::class, 'show']);
-            Route::post('/inspection-types/{id}', [InspectionTypeController::class, 'update']); // POST update (your case)
-            Route::delete('/inspection-types/{id}', [InspectionTypeController::class, 'destroy']);
+        Route::prefix('admin')->group(function () {
+            Route::get('/support', [SupportRequestController::class, 'index']);
+            Route::get('/support/{id}', [SupportRequestController::class, 'show']);
+            Route::post('/support/{id}/reply', [SupportRequestController::class, 'reply']);
+            Route::delete('/support/{id}', [SupportRequestController::class, 'destroy']);
         });
+
+        //inspections types
+        Route::get('/inspection-types', [InspectionTypeController::class, 'index']);
+        Route::post('/inspection-types', [InspectionTypeController::class, 'store']);
+        Route::get('/inspection-types/{id}', [InspectionTypeController::class, 'show']);
+        Route::post('/inspection-types/{id}', [InspectionTypeController::class, 'update']); // POST update (your case)
+        Route::delete('/inspection-types/{id}', [InspectionTypeController::class, 'destroy']);
+    });
 
     //Rehana Mim
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     //Sabbir
+    //Pages
     Route::apiResource('pages', PageController::class)->names('pages.');
 
+    //Settings
+    Route::get('settings', [SettingsController::class, 'show']);
+    Route::post('settings', [SettingsController::class, 'createOrUpdate']);
+
+    //Reviews
+    Route::apiResource('reviews', ReviewsController::class);
+    Route::get('/review-toggle-admin/{id}', [ReviewsController::class, 'toggleStatusAdmin']);
+    Route::get('/suspend-review-inspector/{id}', [ReviewsController::class, 'suspendReviewInspector']);
+    Route::get('/review-matrics', [ReviewsController::class, 'reviewMatrics']);
+
+    //Notification Preference
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/notification-preference-save', [NotificationPreferenceController::class, 'notificationPreference']);
+    });
 });
