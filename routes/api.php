@@ -81,8 +81,58 @@ Route::prefix('v1')->group(function () {
                 Route::post('/support/{id}/reply', [SupportRequestController::class, 'reply']);
                 Route::delete('/support/{id}', [SupportRequestController::class, 'destroy']);
             });
-
         });
+
+    //Rehana Mim
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    //Sabbir
 
 
 
