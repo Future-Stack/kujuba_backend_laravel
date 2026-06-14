@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('estimate_time')->nullable();
             $table->boolean('isAssignedAdmin')->default(false);
             $table->boolean('isReschedule')->default(false);
-            $table->string('status')->default('assigned');
+            $table->string('status')->default('assigned')->comment('assigned,inspection,rescheduled,reports,cancelled,completed');
             $table->timestamps();
         });
     }

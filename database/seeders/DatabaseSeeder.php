@@ -16,6 +16,8 @@ class DatabaseSeeder extends Seeder
             InspectionTypeSeeder::class,
             UserSeeder::class,
             PagesSeeder::class,
+            InspectionsSeeder::class,
+            ReviewsSeeder::class,
         ]);
     }
 }

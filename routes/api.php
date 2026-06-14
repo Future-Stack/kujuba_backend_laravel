@@ -3,6 +3,7 @@
 use App\Http\Controllers\Faq\FaqController;
 use App\Http\Controllers\InspectionBookingController;
 use App\Http\Controllers\Page\PageController;
+use App\Http\Controllers\Reviews\ReviewsController;
 use App\Http\Controllers\Settings\SettingsController;
 use App\Http\Controllers\Support\SupportRequestController;
 use App\Http\Controllers\User\AuthController;
@@ -147,6 +148,9 @@ Route::prefix('v1')->group(function () {
     Route::get('settings', [SettingsController::class, 'show']);
     Route::post('settings', [SettingsController::class, 'createOrUpdate']);
 
-
-
+    //Reviews
+    Route::apiResource('reviews', ReviewsController::class);
+    Route::get('/review-toggle-admin/{id}',[ReviewsController::class,'toggleStatusAdmin']);
+    Route::get('/suspend-review-inspector/{id}',[ReviewsController::class,'suspendReviewInspector']);
+    Route::get('/review-matrics',[ReviewsController::class,'reviewMatrics']);
 });

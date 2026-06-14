@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('booking_inspection_type', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('booking_id')
+            $table->foreignId('inspection_booking_id')
                 ->constrained('inspection_bookings')
                 ->onDelete('cascade');
 
