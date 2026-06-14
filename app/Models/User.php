@@ -10,7 +10,6 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, HasApiTokens;
 
     /**
@@ -28,14 +27,6 @@ class User extends Authenticatable
         'status',
         'user_type', 
     ];
-
-
-
-    //profile
-    public function profile()
-{
-    return $this->hasOne(Profile::class);
-}
 
     /**
      * The attributes that should be hidden for serialization.
