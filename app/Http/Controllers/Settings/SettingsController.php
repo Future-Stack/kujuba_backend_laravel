@@ -43,7 +43,7 @@ class SettingsController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to save settings'
+                'message' => $e->getMessage()
             ], 500);
         }
     }

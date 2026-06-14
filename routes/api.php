@@ -1,10 +1,8 @@
 <?php
 
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\InspectionBookingController;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Faq\FaqController;
+use App\Http\Controllers\InspectionBookingController;
+use App\Http\Controllers\Settings\SettingsController;
 use App\Http\Controllers\Support\SupportRequestController;
 use App\Http\Controllers\InspectionTypeController;
 
@@ -31,14 +29,25 @@ Route::prefix('v1')->group(function () {
     Route::post('reset-password', [AuthController::class, 'resetPassword']);
 
 
-
-
 //Faq Route
-  
+
     Route::get('/faqs', [FaqController::class, 'index']);
-    
+
     Route::get('/faqs/{id}', [FaqController::class, 'show']);
-   
+
+
+    Route::post('/support-request', [SupportRequestController::class, 'store']);
+
+    Route::prefix('admin')->group(function () {
+        Route::get('/support', [SupportRequestController::class, 'index']);
+        Route::get('/support/{id}', [SupportRequestController::class, 'show']);
+        Route::post('/support/{id}/reply', [SupportRequestController::class, 'reply']);
+        Route::delete('/support/{id}', [SupportRequestController::class, 'destroy']);
+    });
+
+    //Settings
+    Route::get('settings', [SettingsController::class, 'show']);
+    Route::post('settings', [SettingsController::class, 'createOrUpdate']);
 
 
 
@@ -60,7 +69,7 @@ Route::prefix('v1')->group(function () {
 
         Route::put('/faqs/{id}', [FaqController::class, 'update']);
         Route::delete('/faqs/{id}', [FaqController::class, 'destroy']);
-        
+
             //Help and  Support Request Route
 
             Route::post('/support-request', [SupportRequestController::class, 'store']);

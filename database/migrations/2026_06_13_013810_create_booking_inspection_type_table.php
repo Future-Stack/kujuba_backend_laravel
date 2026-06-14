@@ -11,10 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('inspection_type_profile', function (Blueprint $table) {
+        Schema::create('booking_inspection_type', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('inspection_type_id')->constrained('inspection_types')->onDelete('cascade');
-            $table->foreignId('profile_id')->constrained('profiles')->onDelete('cascade');
+            $table->foreignId('booking_id')
+                ->constrained('inspection_bookings')
+                ->onDelete('cascade');
+
+            $table->foreignId('inspection_type_id')
+                ->constrained('inspection_types')
+                ->onDelete('cascade');
             $table->timestamps();
         });
     }
@@ -24,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('inspection_type_profile');
+        Schema::dropIfExists('booking_inspection_type');
     }
 };
