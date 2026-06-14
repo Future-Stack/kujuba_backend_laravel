@@ -48,10 +48,6 @@ Route::prefix('v1')->group(function () {
         Route::delete('/support/{id}', [SupportRequestController::class, 'destroy']);
     });
 
-    //Settings
-    Route::get('settings', [SettingsController::class, 'show']);
-    Route::post('settings', [SettingsController::class, 'createOrUpdate']);
-
 
 
     Route::middleware('auth:sanctum')->group(function () {
@@ -144,6 +140,13 @@ Route::prefix('v1')->group(function () {
 
 
     //Sabbir
+    //Pages
     Route::apiResource('pages', PageController::class)->names('pages.');
+
+    //Settings
+    Route::get('settings', [SettingsController::class, 'show']);
+    Route::post('settings', [SettingsController::class, 'createOrUpdate']);
+
+
 
 });
