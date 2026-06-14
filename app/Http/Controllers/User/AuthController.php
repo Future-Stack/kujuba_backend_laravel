@@ -1,18 +1,17 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
-use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\Rules\Password;
 use App\Jobs\SendOtpEmail;
 use App\Models\Profile;
+use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
@@ -20,7 +19,7 @@ class AuthController extends Controller
     public function getProfile(Request $request)
     {
         try {
-            $user = $request->user(); 
+            $user = $request->user();
 
             if (!$user) {
                 return response()->json([
@@ -49,7 +48,7 @@ class AuthController extends Controller
                     'stripe_account_id'           => $user->profile->stripe_account_id,
                     'stripe_customer_id'          => $user->profile->stripe_customer_id,
                     'stripe_onboarding_completed' => (bool)$user->profile->stripe_onboarding_completed,
-                    
+
                     'inspection_types' => $user->profile->inspectionTypes->map(function ($type) {
                         return [
                             'id'         => $type->id,
@@ -75,7 +74,7 @@ class AuthController extends Controller
             ], 500);
         }
     }
-    
+
 
     /**
      * User Registration
@@ -89,14 +88,14 @@ class AuthController extends Controller
             'password'              => ['required', 'string', 'confirmed', Password::min(8)],
             'status'                => 'required|string|max:255',
             'user_type'            => 'required|string|max:255',
-        
+
             'address'               => 'nullable|string',
             'phone'                 => 'nullable|string|max:50',
-            'profile_img'           => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240', 
+            'profile_img'           => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
             'license_number'        => 'nullable|string|max:255',
             'license_expiry'        => 'nullable|date_format:Y-m-d',
             'insurance_expiry'      => 'nullable|date_format:Y-m-d',
-            
+
             'inspection_type_ids'   => 'nullable|array',
             'inspection_type_ids.*' => 'integer|exists:inspection_types,id',
         ]);
@@ -114,7 +113,7 @@ class AuthController extends Controller
                 'status'        => $request->status,
                 'user_type'    => $request->user_type,
                 'otp'           => $otp,
-                'otp_expire_at' => now()->addMinutes(5), 
+                'otp_expire_at' => now()->addMinutes(5),
             ]);
 
             $profileImgPath = null;
@@ -124,10 +123,10 @@ class AuthController extends Controller
 
             $profile = Profile::create([
                 'user_id'                     => $user->id,
-                'address'                     => $request->address ?? null,      
+                'address'                     => $request->address ?? null,
                 'profile_img'                 => $profileImgPath ?? null,
-                'phone'                       => $request->phone ?? null, 
-                'license_number'              => $request->license_number ?? null, 
+                'phone'                       => $request->phone ?? null,
+                'license_number'              => $request->license_number ?? null,
                 'license_expiry'              => $request->license_expiry ?? null,
                 'insurance_expiry'            => $request->insurance_expiry ?? null,
                 'stripe_account_id'           => $request->stripe_account_id ?? null,
@@ -183,11 +182,11 @@ class AuthController extends Controller
                 'address'               => 'nullable|string',
                 'phone'                 => 'nullable|string|max:50',
                 'profile_img'           => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
-                
+
                 'license_number'        => 'nullable|string|max:255',
                 'license_expiry'        => 'nullable|date_format:Y-m-d',
                 'insurance_expiry'      => 'nullable|date_format:Y-m-d',
-                
+
                 'inspection_type_ids'   => 'nullable|array',
                 'inspection_type_ids.*' => 'integer|exists:inspection_types,id',
                 'inspection_types'      => 'nullable|array',
@@ -212,7 +211,7 @@ class AuthController extends Controller
 
             $profile->address = $request->address;
             $profile->phone   = $request->phone;
-            
+
             $currentUserType = $user->user_types ?? $request->user_type ?? $request->user_types;
 
             if ($currentUserType === 'inspector') {
@@ -228,7 +227,7 @@ class AuthController extends Controller
                 }
 
                 $selectedTypes = $request->input('inspection_type_ids') ?? $request->input('inspection_types') ?? [];
-                
+
                 $profile->inspectionTypes()->sync($selectedTypes);
             }
 
@@ -392,7 +391,7 @@ class AuthController extends Controller
                 ], 404);
             }
 
-            $otp = random_int(100000, 999999); 
+            $otp = random_int(100000, 999999);
 
             $user->update([
                 'otp'           => $otp,
@@ -469,15 +468,15 @@ class AuthController extends Controller
             $isRegisterFlow = is_null($user->email_verified_at) || $user->status === 'pending';
 
             if ($isRegisterFlow) {
-                
+
                 $user->email_verified_at = $user->email_verified_at ?? now();
                 $user->otp               = null;
                 $user->otp_expire_at     = null;
                 $user->status            = 'active';
-                
-                $user->save(); 
 
-                $user = $user->fresh(); 
+                $user->save();
+
+                $user = $user->fresh();
 
                 $tokenName = config('auth.token_name', 'auth_token');
                 $token     = $user->createToken($tokenName)->plainTextToken;
@@ -548,7 +547,7 @@ class AuthController extends Controller
 
             return response()->json([
                 'success' => true,
-                'otp'     => $otp, 
+                'otp'     => $otp,
                 'message' => 'A new OTP has been sent to your email.',
             ], 200);
 

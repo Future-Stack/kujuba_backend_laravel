@@ -18,6 +18,7 @@ return new class extends Migration
             $table->text('short_desc');
             $table->decimal('price', 8, 2);
             $table->tinyInteger('status')->default(1)->comment('1=active,0=inactive');
+            $table->softDeletes();
             $table->timestamps();
         });
     }

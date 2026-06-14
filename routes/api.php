@@ -1,12 +1,11 @@
 <?php
 
-use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Faq\FaqController;
 use App\Http\Controllers\InspectionBookingController;
 use App\Http\Controllers\Settings\SettingsController;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Faq\FaqController;
 use App\Http\Controllers\Support\SupportRequestController;
+use App\Http\Controllers\User\AuthController;
+use Illuminate\Support\Facades\Route;
 
 
 Route::prefix('v1')->group(function () {
