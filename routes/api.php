@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Faq\FaqController;
 use App\Http\Controllers\InspectionBookingController;
+use App\Http\Controllers\Page\PageController;
 use App\Http\Controllers\Settings\SettingsController;
 use App\Http\Controllers\Support\SupportRequestController;
 use App\Http\Controllers\User\AuthController;
@@ -133,8 +134,7 @@ Route::prefix('v1')->group(function () {
 
 
     //Sabbir
-
-
+    Route::apiResource('pages', PageController::class)->names('pages.');
 
 });
 // Route::get('/user', function (Request $request) {
