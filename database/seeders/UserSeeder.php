@@ -24,6 +24,16 @@ class UserSeeder extends Seeder
             ]
         );
 
+        $admin = User::create([
+            'first_name' => 'Admin',
+            'last_name'  => 'User',
+            'email'      => 'romichaparvin35@gmail.com',
+            'password'   => Hash::make('Password@123'),
+            'status'     => 'active',
+            'user_type'  => 'admin',
+            'email_verified_at' => now(),
+        ]);
+
         Profile::updateOrCreate(
             ['user_id' => $admin->id],
             [
