@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Faq\FaqController;
 use App\Http\Controllers\Support\SupportRequestController;
+use App\Http\Controllers\InspectionTypeController;
 
 
 Route::prefix('v1')->group(function () {
@@ -71,7 +72,15 @@ Route::prefix('v1')->group(function () {
                 Route::delete('/support/{id}', [SupportRequestController::class, 'destroy']);
             });
 
+            //Inspection types
+            
+
+            Route::resource('inspection-types', InspectionTypeController::class);
+
         });
+
+
+
 
     });
     // Route::get('/user', function (Request $request) {
