@@ -13,7 +13,7 @@ class UserSeeder extends Seeder
     {
         // Admin
         $admin = User::updateOrCreate(
-            ['email' => 'admin@kujuba.com'],
+            ['email' => 'romichaparvin35@gmail.com'],
             [
                 'first_name' => 'Admin',
                 'last_name'  => 'User',
@@ -23,16 +23,6 @@ class UserSeeder extends Seeder
                 'email_verified_at' => now(),
             ]
         );
-
-        $admin = User::create([
-            'first_name' => 'Admin',
-            'last_name'  => 'User',
-            'email'      => 'romichaparvin35@gmail.com',
-            'password'   => Hash::make('Password@123'),
-            'status'     => 'active',
-            'user_type'  => 'admin',
-            'email_verified_at' => now(),
-        ]);
 
         Profile::updateOrCreate(
             ['user_id' => $admin->id],
