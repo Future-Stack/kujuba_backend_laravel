@@ -14,6 +14,9 @@ use App\Http\Controllers\User\GoogleAuthController;
 use App\Http\Controllers\InspectionReportController;
 use App\Http\Controllers\Admin\AdminInspectionReportController;
 
+
+
+
 Route::prefix('v1')->group(function () {
     Route::get('/', function () {
         return response()->json([
