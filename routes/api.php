@@ -12,6 +12,7 @@ use App\Http\Controllers\Reviews\ReviewsController;
 use App\Http\Controllers\Settings\SettingsController;
 use App\Http\Controllers\Support\SupportRequestController;
 use App\Http\Controllers\User\AuthController;
+use App\Http\Controllers\User\DeleteUsersController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\InspectionTypeController;
 use App\Http\Controllers\User\GoogleAuthController;
@@ -187,5 +188,9 @@ Route::prefix('v1')->group(function () {
 
         //Inspection Decline
         Route::post('/decline-Inspection', [InspectionDeclinesController::class, 'storeDecline']);
+
+        //Delete User(self)
+        Route::post('/delete-user',[DeleteUsersController::class, 'destroy']);
+
     });
 });
