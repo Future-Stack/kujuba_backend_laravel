@@ -4,6 +4,8 @@ use App\Http\Controllers\Faq\FaqController;
 use App\Http\Controllers\InspectionBookingController;
 use App\Http\Controllers\Notification\NotificationPreferenceController;
 use App\Http\Controllers\Page\PageController;
+use App\Http\Controllers\Reviews\HomeownerReviewsController;
+use App\Http\Controllers\Reviews\InspectorReviewsController;
 use App\Http\Controllers\Reviews\ReviewsController;
 use App\Http\Controllers\Settings\SettingsController;
 use App\Http\Controllers\Support\SupportRequestController;
@@ -97,6 +99,40 @@ Route::prefix('v1')->group(function () {
     //Rehana Mim
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     //Sabbir
     //Pages
     Route::apiResource('pages', PageController::class)->names('pages.');
@@ -114,5 +150,11 @@ Route::prefix('v1')->group(function () {
     //Notification Preference
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/notification-preference-save', [NotificationPreferenceController::class, 'notificationPreference']);
+        Route::get('/users/reviews', [InspectorReviewsController::class, 'index']);
+        Route::get('/users/reviews/matrics', [InspectorReviewsController::class, 'reviewMatrics']);
+
+
+        //inspector Review
+        Route::post('/user/review/submit',[HomeownerReviewsController::class, 'store']);
     });
 });
