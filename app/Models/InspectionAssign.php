@@ -21,4 +21,9 @@ class InspectionAssign extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function report()
+    {
+        return $this->hasOne(InspectionReport::class);
+    }
 }
