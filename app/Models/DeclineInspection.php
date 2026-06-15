@@ -6,5 +6,5 @@ use Illuminate\Database\Eloquent\Model;
 
 class DeclineInspection extends Model
 {
-    //
+    protected $guarded = [];
 }

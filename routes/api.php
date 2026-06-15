@@ -3,6 +3,7 @@
 use App\Http\Controllers\Faq\FaqController;
 use App\Http\Controllers\Inspection_Assign\InspectionAssignsController;
 use App\Http\Controllers\InspectionBookingController;
+use App\Http\Controllers\Inspecttion_Decline\InspectionDeclinesController;
 use App\Http\Controllers\Notification\NotificationPreferenceController;
 use App\Http\Controllers\Page\PageController;
 use App\Http\Controllers\Reviews\HomeownerReviewsController;
@@ -83,9 +84,9 @@ Route::prefix('v1')->group(function () {
         });
 
         //inspections types
-        
+
         Route::post('/inspection-types', [InspectionTypeController::class, 'store']);
-        
+
         Route::post('/inspection-types/{id}', [InspectionTypeController::class, 'update']); // POST update (your case)
         Route::delete('/inspection-types/{id}', [InspectionTypeController::class, 'destroy']);
     });
@@ -183,5 +184,8 @@ Route::prefix('v1')->group(function () {
 
         //Inspection Assigns (inspector self and Admin)
         Route::post('/assign-Inspection', [InspectionAssignsController::class, 'createOrUpdateInspectionAssign']);
+
+        //Inspection Decline
+        Route::post('/decline-Inspection', [InspectionDeclinesController::class, 'storeDecline']);
     });
 });
