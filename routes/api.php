@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Faq\FaqController;
+use App\Http\Controllers\Inspection_Assign\InspectionAssignsController;
 use App\Http\Controllers\InspectionBookingController;
 use App\Http\Controllers\Notification\NotificationPreferenceController;
 use App\Http\Controllers\Page\PageController;
@@ -153,8 +154,10 @@ Route::prefix('v1')->group(function () {
         Route::get('/users/reviews', [InspectorReviewsController::class, 'index']);
         Route::get('/users/reviews/matrics', [InspectorReviewsController::class, 'reviewMatrics']);
 
-
         //inspector Review
         Route::post('/user/review/submit',[HomeownerReviewsController::class, 'store']);
+
+        //Inspection Assigns (inspector self and Admin)
+        Route::post('/assign-Inspection', [InspectionAssignsController::class, 'createOrUpdateInspectionAssign']);
     });
 });
