@@ -30,6 +30,10 @@ class InspectionBooking extends Model
     {
         return $this->hasOne(InspectionPayment::class, 'inspection_booking_id');
     }
+    public function user()
+{
+    return $this->belongsTo(User::class);
+}
 
     public function inspectionTypes()
     {

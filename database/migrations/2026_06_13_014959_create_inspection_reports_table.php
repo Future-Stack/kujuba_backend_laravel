@@ -6,25 +6,47 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('inspection_reports', function (Blueprint $table) {
+
             $table->id();
-            $table->foreignId('inspection_assign_id')->constrained('inspection_assigns')->onDelete('cascade');
-            $table->json('galleries')->nullable();
+
+            // relation
+            $table->foreignId('inspection_assign_id')
+                ->constrained('inspection_assigns')
+                ->onDelete('cascade');
+
+            // inspector notes
+            $table->text('notes')->nullable();
+
+            // photos + videos (json)
+            $table->json('media')->nullable();
+
+            //  final report file (pdf/jpg)
             $table->string('report_file')->nullable();
-            $table->text('feedback')->nullable();
-            $table->string('status')->default('pending');
+
+            //  favorite system
+            $table->boolean('is_favorite')->default(false);
+
+            //  workflow status
+            $table->enum('status', [
+                'pending',
+                'started',
+                'completed',
+                'cancelled',
+                'archived'
+            ])->default('pending');
+
+            // ⏱ workflow timestamps
+            $table->timestamp('started_at')->nullable();
+            $table->timestamp('completed_at')->nullable();
+            $table->timestamp('cancelled_at')->nullable();
+            $table->softDeletes();
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('inspection_reports');

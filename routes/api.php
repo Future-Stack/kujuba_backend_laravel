@@ -11,6 +11,10 @@ use App\Http\Controllers\User\AuthController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\InspectionTypeController;
 use App\Http\Controllers\User\GoogleAuthController;
+use App\Http\Controllers\InspectionReportController;
+use App\Http\Controllers\Admin\AdminInspectionReportController;
+
+
 
 
 Route::prefix('v1')->group(function () {
@@ -37,22 +41,11 @@ Route::prefix('v1')->group(function () {
     Route::post('google/token', [GoogleAuthController::class, 'tokenLogin']);
 
 
-//Faq Route
 
-    Route::get('/faqs', [FaqController::class, 'index']);
+        //inspections types
 
-    Route::get('/faqs/{id}', [FaqController::class, 'show']);
-
-
-    Route::post('/support-request', [SupportRequestController::class, 'store']);
-
-    Route::prefix('admin')->group(function () {
-        Route::get('/support', [SupportRequestController::class, 'index']);
-        Route::get('/support/{id}', [SupportRequestController::class, 'show']);
-        Route::post('/support/{id}/reply', [SupportRequestController::class, 'reply']);
-        Route::delete('/support/{id}', [SupportRequestController::class, 'destroy']);
-    });
-
+   Route::get('/inspection-types', [InspectionTypeController::class, 'index']);
+   Route::get('/inspection-types/{id}', [InspectionTypeController::class, 'show']);
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/change-password', [AuthController::class, 'changePassword']);
@@ -87,15 +80,46 @@ Route::prefix('v1')->group(function () {
         });
 
         //inspections types
-        Route::get('/inspection-types', [InspectionTypeController::class, 'index']);
+        
         Route::post('/inspection-types', [InspectionTypeController::class, 'store']);
-        Route::get('/inspection-types/{id}', [InspectionTypeController::class, 'show']);
+        
         Route::post('/inspection-types/{id}', [InspectionTypeController::class, 'update']); // POST update (your case)
         Route::delete('/inspection-types/{id}', [InspectionTypeController::class, 'destroy']);
     });
 
     //Rehana Mim
+        //Inspection report routes
+        Route::prefix('inspection-reports')->group(function () {
 
+            // start inspection
+            Route::post('/{id}/start', [InspectionReportController::class, 'start']);
+
+            // save everything (notes + media + report)
+            Route::post('/{id}/save', [InspectionReportController::class, 'save']);
+            Route::get('/{id}/save', [InspectionReportController::class, 'show']);
+
+            // final submit
+            Route::post('/{id}/submit', [InspectionReportController::class, 'submit']);
+
+            // cancel inspection
+            Route::post('/{id}/cancel', [InspectionReportController::class, 'cancel']);
+        });
+
+
+ // admin Inspection report routes
+        Route::prefix('admin/reports')->group(function () {
+
+            Route::get('/stats', [AdminInspectionReportController::class, 'stats']);
+
+            Route::get('/', [AdminInspectionReportController::class, 'index']);
+
+            Route::get('/{id}', [AdminInspectionReportController::class, 'show']);
+
+            Route::get('/{id}/download', [AdminInspectionReportController::class, 'download']);
+
+            Route::post('/{id}/archive', [AdminInspectionReportController::class, 'archive']);
+            Route::post('/{id}/favorite', [AdminInspectionReportController::class, 'toggleFavorite']);
+        });
 
     //Sabbir
     //Pages
