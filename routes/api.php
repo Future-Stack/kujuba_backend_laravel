@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\InspectionTypeController;
 use App\Http\Controllers\User\GoogleAuthController;
 use App\Http\Controllers\InspectionReportController;
-
+use App\Http\Controllers\Admin\AdminInspectionReportController;
 
 Route::prefix('v1')->group(function () {
     Route::get('/', function () {
@@ -100,6 +100,22 @@ Route::prefix('v1')->group(function () {
 
             // cancel inspection
             Route::post('/{id}/cancel', [InspectionReportController::class, 'cancel']);
+        });
+
+
+ // admin Inspection report routes
+        Route::prefix('admin/reports')->group(function () {
+
+            Route::get('/stats', [AdminInspectionReportController::class, 'stats']);
+
+            Route::get('/', [AdminInspectionReportController::class, 'index']);
+
+            Route::get('/{id}', [AdminInspectionReportController::class, 'show']);
+
+            Route::get('/{id}/download', [AdminInspectionReportController::class, 'download']);
+
+            Route::post('/{id}/archive', [AdminInspectionReportController::class, 'archive']);
+            Route::post('/{id}/favorite', [AdminInspectionReportController::class, 'toggleFavorite']);
         });
 
     //Sabbir
