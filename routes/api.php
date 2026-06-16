@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\Faq\FaqController;
+use App\Http\Controllers\Inspection\InspectionController;
 use App\Http\Controllers\Inspection_Assign\InspectionAssignsController;
 use App\Http\Controllers\InspectionBookingController;
 use App\Http\Controllers\Inspecttion_Decline\InspectionDeclinesController;
+use App\Http\Controllers\Notification\NotificationController;
 use App\Http\Controllers\Notification\NotificationPreferenceController;
 use App\Http\Controllers\Page\PageController;
 use App\Http\Controllers\Reviews\HomeownerReviewsController;
@@ -174,8 +176,8 @@ Route::prefix('v1')->group(function () {
     Route::get('/suspend-review-inspector/{id}', [ReviewsController::class, 'suspendReviewInspector']);
     Route::get('/review-matrics', [ReviewsController::class, 'reviewMatrics']);
 
-    //Notification Preference
     Route::middleware('auth:sanctum')->group(function () {
+        //Notification Preference
         Route::post('/notification-preference-save', [NotificationPreferenceController::class, 'notificationPreference']);
         Route::get('/users/reviews', [InspectorReviewsController::class, 'index']);
         Route::get('/users/reviews/matrics', [InspectorReviewsController::class, 'reviewMatrics']);
@@ -191,6 +193,21 @@ Route::prefix('v1')->group(function () {
 
         //Delete User(self)
         Route::post('/delete-user',[DeleteUsersController::class, 'destroy']);
+
+        //Completed Inspections
+        Route::get('/status-inspections',[InspectionController::class, 'statusInspections']);
+
+        //Admin Notification Store & sent
+        Route::post('/store-sent-notifications',[NotificationController::class, 'store']);
+
+        //Fetch Userwise Notification
+        Route::get('/user-notifications',[NotificationController::class, 'fetchUserNotification']);
+
+        //Fetch All Notifications Record (Admin)
+        Route::get('/all-notifications',[NotificationController::class, 'fetchAllNotification']);
+
+
+
 
     });
 });
