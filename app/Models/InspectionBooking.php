@@ -30,10 +30,14 @@ class InspectionBooking extends Model
     {
         return $this->hasOne(InspectionPayment::class, 'inspection_booking_id');
     }
+     /**
+     * 👤 HOMEOWNER relation (FIXED)
+     */
     public function user()
-{
-    return $this->belongsTo(User::class);
-}
+    {
+        return $this->belongsTo(User::class, 'homeowner_id');
+    }
+
 
     public function inspectionTypes()
     {

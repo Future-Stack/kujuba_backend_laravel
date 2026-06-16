@@ -103,7 +103,7 @@ class AuthController extends Controller
         DB::beginTransaction();
 
         try {
-            $otp = random_int(100000, 999999);
+            $otp = random_int(1000, 9999);
 
             $user = User::create([
                 'first_name'    => $request->first_name,
@@ -391,7 +391,7 @@ class AuthController extends Controller
                 ], 404);
             }
 
-            $otp = random_int(100000, 999999);
+            $otp = random_int(1000, 9999);
 
             $user->update([
                 'otp'           => $otp,
@@ -427,12 +427,12 @@ class AuthController extends Controller
         try {
             $request->validate([
                 'email' => 'required|email',
-                'otp'   => 'required|digits:6',
+                'otp'   => 'required|digits:4',
             ], [
                 'email.required' => 'Email field is required.',
                 'email.email'    => 'Please enter a valid email address.',
                 'otp.required'   => 'OTP field is required.',
-                'otp.digits'     => 'OTP must be 6 digits.',
+                'otp.digits'     => 'OTP must be 4 digits.',
             ]);
 
             $user = User::where('email', $request->email)->first();
@@ -535,7 +535,7 @@ class AuthController extends Controller
                 ], 404);
             }
 
-            $otp = random_int(100000, 999999);
+            $otp = random_int(1000, 9999);
 
             $user->update([
                 'otp'           => $otp,
@@ -575,7 +575,7 @@ class AuthController extends Controller
         try {
             $request->validate([
                 'email'        => 'required|email|exists:users,email',
-                'otp'          => 'required|digits:6',
+                'otp'          => 'required|digits:4',
                 'new_password' => [
                     'required',
                     'confirmed',
@@ -633,7 +633,7 @@ class AuthController extends Controller
 
         $request->validate([
             'current_password' => 'required',
-            'new_password' => 'required|min:6|confirmed',
+            'new_password' => 'required|min:4|confirmed',
         ]);
 
         $user = $request->user();
