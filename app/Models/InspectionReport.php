@@ -12,6 +12,7 @@ class InspectionReport extends Model
     protected $fillable = [
         'inspection_assign_id',
         'notes',
+        'homeowner_feedback',
         'media',
         'report_file',
         'is_favorite',

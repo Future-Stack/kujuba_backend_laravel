@@ -19,6 +19,8 @@ return new class extends Migration
 
             // inspector notes
             $table->text('notes')->nullable();
+                //  homeowner feedback (NEW)
+            $table->text('homeowner_feedback')->nullable();
 
             // photos + videos (json)
             $table->json('media')->nullable();

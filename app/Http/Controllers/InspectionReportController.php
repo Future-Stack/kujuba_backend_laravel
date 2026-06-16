@@ -232,33 +232,121 @@ class InspectionReportController extends Controller
         ]);
     }
 
-    /**
-     * FORMAT RESPONSE (FULL URL FIXED)
-     */
     private function formatReport($report)
-    {
-        return [
-            'id' => $report->id,
-            'inspection_assign_id' => $report->inspection_assign_id,
-            'notes' => $report->notes,
+{
+    return [
+        'id' => $report->id,
+        'inspection_assign_id' => $report->inspection_assign_id,
+        'notes' => $report->notes,
 
-            'media' => [
-                'photos' => collect($report->media['photos'] ?? [])
-                    ->map(fn ($path) => asset('storage/' . $path)),
+        'homeowner_feedback' => $report->homeowner_feedback ?? null, // 🔥 ADD THIS
 
-                'videos' => collect($report->media['videos'] ?? [])
-                    ->map(fn ($path) => asset('storage/' . $path)),
-            ],
+        'media' => [
+            'photos' => collect($report->media['photos'] ?? [])
+                ->map(fn ($path) => asset('storage/' . $path)),
 
-            'report_file' => $report->report_file
-                ? asset('storage/' . $report->report_file)
-                : null,
+            'videos' => collect($report->media['videos'] ?? [])
+                ->map(fn ($path) => asset('storage/' . $path)),
+        ],
 
-            'is_favorite' => $report->is_favorite,
-            'status' => $report->status,
-            'started_at' => $report->started_at,
-            'completed_at' => $report->completed_at,
-            'cancelled_at' => $report->cancelled_at,
-        ];
+        'report_file' => $report->report_file
+            ? asset('storage/' . $report->report_file)
+            : null,
+
+        'is_favorite' => $report->is_favorite,
+        'status' => $report->status,
+        'started_at' => $report->started_at,
+        'completed_at' => $report->completed_at,
+        'cancelled_at' => $report->cancelled_at,
+    ];
+}
+
+//for home owner to view the report after completion
+  public function homeownerReport($id)
+{
+    $report = InspectionReport::with('inspectionAssign.inspectionBooking')
+        ->findOrFail($id);
+
+    $userId = auth()->id();
+
+    // 🔒 ownership check
+    if ($report->inspectionAssign->inspectionBooking->user_id !== $userId) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Unauthorized access'
+        ], 403);
     }
+
+    // ❌ only completed allowed
+    if ($report->status !== 'completed') {
+        return response()->json([
+            'success' => false,
+            'message' => 'Report is not completed yet'
+        ], 403);
+    }
+
+    return response()->json([
+        'success' => true,
+        'data' => $this->formatReport($report)
+    ]);
+}
+
+
+//for home owener to add note after viewing the report
+public function homeownerNote(Request $request, $id)
+{
+    $request->validate([
+        'homeowner_feedback' => 'required|string'
+    ]);
+
+    $report = InspectionReport::with('inspectionAssign.inspectionBooking')
+        ->findOrFail($id);
+
+    // ❌ only completed report allowed
+    if ($report->status !== 'completed') {
+        return response()->json([
+            'success' => false,
+            'message' => 'Report is not completed yet'
+        ], 400);
+    }
+
+    // 🔒 ownership check
+    if ($report->inspectionAssign->inspectionBooking->user_id !== auth()->id()) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Unauthorized access'
+        ], 403);
+    }
+
+    // ❌ already exists check (ONE TIME ONLY)
+    if (!empty($report->homeowner_feedback)) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Feedback already submitted'
+        ], 400);
+    }
+
+    // 🆕 create (first time only)
+    $report->update([
+        'homeowner_feedback' => $request->homeowner_feedback
+    ]);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Feedback submitted successfully',
+        'data' => $this->formatReport($report)
+    ]);
+}
+//for sharing the report link after completion
+public function shareReport($id)
+{
+    $report = InspectionReport::findOrFail($id);
+
+    return response()->json([
+        'success' => true,
+        'share_url' => $report->report_file
+            ? asset('storage/' . $report->report_file)
+            : null
+    ]);
+}
 }
