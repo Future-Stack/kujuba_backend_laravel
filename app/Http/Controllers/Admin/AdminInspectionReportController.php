@@ -30,43 +30,47 @@ class AdminInspectionReportController extends Controller
      * 📋 LIST
      */
     public function index(Request $request)
-    {
-        $query = InspectionReport::with(
-            'inspectionAssign.inspectionBooking.user',
-            'inspectionAssign.inspector'
-        )->latest();
+{
+    $query = InspectionReport::with(
+        'inspectionAssign.inspectionBooking.user',
+        'inspectionAssign.inspector'
+    );
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
+    // ✅ STATUS FILTER (SAFE + LOWERCASE NORMALIZATION)
+    if ($request->filled('status')) {
 
-        if ($request->filled('search')) {
-            $search = $request->search;
+        $status = strtolower($request->status);
 
-            $query->where(function ($q) use ($search) {
-                $q->where('inspection_assign_id', 'like', "%{$search}%")
-                  ->orWhere('notes', 'like', "%{$search}%");
-            });
-        }
-
-        $reports = $query->paginate(10);
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'reports' => $reports->getCollection()->map(function ($report) {
-                    return $this->formatReport($report);
-                }),
-                'pagination' => [
-                    'current_page' => $reports->currentPage(),
-                    'last_page' => $reports->lastPage(),
-                    'total' => $reports->total(),
-                    'next_page_url' => $reports->nextPageUrl(),
-                    'prev_page_url' => $reports->previousPageUrl(),
-                ]
-            ]
-        ]);
+        $query->where('status', $status);
     }
+
+    // 🔍 SEARCH
+    if ($request->filled('search')) {
+        $search = $request->search;
+
+        $query->where(function ($q) use ($search) {
+            $q->where('inspection_assign_id', 'like', "%{$search}%")
+              ->orWhere('notes', 'like', "%{$search}%");
+        });
+    }
+
+    $reports = $query->latest()->paginate(10);
+
+    return response()->json([
+        'success' => true,
+        'data' => [
+            'reports' => $reports->getCollection()->map(fn ($report) => $this->formatReport($report)),
+
+            'pagination' => [
+                'current_page' => $reports->currentPage(),
+                'last_page' => $reports->lastPage(),
+                'total' => $reports->total(),
+                'next_page_url' => $reports->nextPageUrl(),
+                'prev_page_url' => $reports->previousPageUrl(),
+            ]
+        ]
+    ]);
+}
 
     /**
      * 👁 SHOW

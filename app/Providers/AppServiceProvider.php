@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use App\Models\InspectionReport;
+use App\Observers\InspectionReportObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -18,7 +20,7 @@ class AppServiceProvider extends ServiceProvider
      * Bootstrap any application services.
      */
     public function boot(): void
-    {
-        //
-    }
+{
+    InspectionReport::observe(InspectionReportObserver::class);
+}
 }
