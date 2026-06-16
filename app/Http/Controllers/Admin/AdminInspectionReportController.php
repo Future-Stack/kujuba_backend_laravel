@@ -30,45 +30,57 @@ class AdminInspectionReportController extends Controller
      * 📋 LIST
      */
     public function index(Request $request)
-    {
-        $query = InspectionReport::with('inspectionAssign.inspectionBooking.user', 'inspectionAssign.inspector')
-            ->latest();
+{
+    $query = InspectionReport::with(
+        'inspectionAssign.inspectionBooking.user',
+        'inspectionAssign.inspector'
+    );
 
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
+    // ✅ STATUS FILTER (SAFE + LOWERCASE NORMALIZATION)
+    if ($request->filled('status')) {
 
-        if ($request->filled('search')) {
-            $query->where('inspection_assign_id', 'like', '%' . $request->search . '%')
-                  ->orWhere('notes', 'like', '%' . $request->search . '%');
-        }
+        $status = strtolower($request->status);
 
-        $reports = $query->paginate(10);
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'reports' => collect($reports->items())->map(function ($report) {
-                    return $this->formatReport($report);
-                }),
-                'pagination' => [
-                    'current_page' => $reports->currentPage(),
-                    'last_page' => $reports->lastPage(),
-                    'total' => $reports->total(),
-                    'next_page_url' => $reports->nextPageUrl(),
-                    'prev_page_url' => $reports->previousPageUrl(),
-                ]
-            ]
-        ]);
+        $query->where('status', $status);
     }
+
+    // 🔍 SEARCH
+    if ($request->filled('search')) {
+        $search = $request->search;
+
+        $query->where(function ($q) use ($search) {
+            $q->where('inspection_assign_id', 'like', "%{$search}%")
+              ->orWhere('notes', 'like', "%{$search}%");
+        });
+    }
+
+    $reports = $query->latest()->paginate(10);
+
+    return response()->json([
+        'success' => true,
+        'data' => [
+            'reports' => $reports->getCollection()->map(fn ($report) => $this->formatReport($report)),
+
+            'pagination' => [
+                'current_page' => $reports->currentPage(),
+                'last_page' => $reports->lastPage(),
+                'total' => $reports->total(),
+                'next_page_url' => $reports->nextPageUrl(),
+                'prev_page_url' => $reports->previousPageUrl(),
+            ]
+        ]
+    ]);
+}
 
     /**
      * 👁 SHOW
      */
     public function show($id)
     {
-        $report = InspectionReport::with('inspectionAssign.inspectionBooking.user', 'inspectionAssign.inspector')
-            ->findOrFail($id);
+        $report = InspectionReport::with(
+            'inspectionAssign.inspectionBooking.user',
+            'inspectionAssign.inspector'
+        )->findOrFail($id);
 
         return response()->json([
             'success' => true,
@@ -77,7 +89,7 @@ class AdminInspectionReportController extends Controller
     }
 
     /**
-     * 📥 DOWNLOAD
+     * 📥 DOWNLOAD REPORT FILE
      */
     public function download($id)
     {
@@ -94,7 +106,7 @@ class AdminInspectionReportController extends Controller
     }
 
     /**
-     * 📦 ARCHIVE
+     * 📦 ARCHIVE REPORT
      */
     public function archive($id)
     {
@@ -117,63 +129,54 @@ class AdminInspectionReportController extends Controller
         ]);
     }
 
-
-
-
-//favorite toggle
+    /**
+     * ⭐ FAVORITE TOGGLE
+     */
     public function toggleFavorite($id)
-{
-    $report = InspectionReport::findOrFail($id);
+    {
+        $report = InspectionReport::findOrFail($id);
 
-    $report->update([
-        'is_favorite' => !$report->is_favorite
-    ]);
+        $report->update([
+            'is_favorite' => !$report->is_favorite
+        ]);
 
-    return response()->json([
-        'success' => true,
-        'message' => $report->is_favorite
-            ? 'Report added to favorites'
-            : 'Report removed from favorites',
-        'data' => [
-            'id' => $report->id,
-            'is_favorite' => $report->is_favorite
-        ]
-    ]);
-}
-
-
+        return response()->json([
+            'success' => true,
+            'message' => $report->is_favorite
+                ? 'Added to favorites'
+                : 'Removed from favorites',
+            'data' => [
+                'id' => $report->id,
+                'is_favorite' => $report->is_favorite
+            ]
+        ]);
+    }
 
     /**
-     *  FORMAT (MODEL NAME FOLLOWED EXACTLY)
+     * 🔥 FORMAT REPORT
      */
     private function formatReport($report)
 {
+    $user = $report->inspectionAssign?->inspectionBooking?->user;
+
     return [
         'id' => $report->id,
 
+        // ✅ ONLY USER NAME (NO ADDRESS)
         'user_name' =>
-            ($report->inspectionAssign->inspectionBooking->user->first_name ?? '') . ' ' .
-            ($report->inspectionAssign->inspectionBooking->user->last_name ?? ''),
+            trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')) ?: null,
 
         'location' =>
-            $report->inspectionAssign->inspectionBooking->location ?? null,
+            $report->inspectionAssign?->inspectionBooking?->location ?? null,
 
-        'inspection_id' => 'INS:' . str_pad(
-            $report->inspection_assign_id,
-            10,
-            '0',
-            STR_PAD_LEFT
-        ),
+        'inspection_id' =>
+            'INS:' . str_pad($report->inspection_assign_id, 10, '0', STR_PAD_LEFT),
 
-        'report_id' => 'RPT:' . str_pad(
-            $report->id,
-            4,
-            '0',
-            STR_PAD_LEFT
-        ),
+        'report_id' =>
+            'RPT:' . str_pad($report->id, 4, '0', STR_PAD_LEFT),
 
         'inspector_email' =>
-            $report->inspectionAssign->inspector->email ?? null,
+            $report->inspectionAssign?->inspector?->email ?? null,
 
         'created_date' =>
             $report->created_at?->format('d M Y'),
@@ -184,22 +187,28 @@ class AdminInspectionReportController extends Controller
         'is_favorite' =>
             (bool) $report->is_favorite,
 
+        'homeowner_feedback' =>
+            $report->homeowner_feedback ?? null,
+
         'report_details' => [
             'notes' => $report->notes,
 
             'media' => [
                 'photos' => collect($report->media['photos'] ?? [])
                     ->map(fn ($path) => asset('storage/' . $path))
-                    ->values(),
+                    ->values()
+                    ->all(),
 
                 'videos' => collect($report->media['videos'] ?? [])
                     ->map(fn ($path) => asset('storage/' . $path))
-                    ->values(),
+                    ->values()
+                    ->all(),
             ],
 
-            'report_file' => $report->report_file
-                ? asset('storage/' . $report->report_file)
-                : null,
+            'report_file' =>
+                $report->report_file
+                    ? asset('storage/' . $report->report_file)
+                    : null,
         ],
     ];
 }

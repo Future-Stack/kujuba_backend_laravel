@@ -12,6 +12,7 @@ class InspectionReport extends Model
     protected $fillable = [
         'inspection_assign_id',
         'notes',
+        'homeowner_feedback',
         'media',
         'report_file',
         'is_favorite',
@@ -76,4 +77,45 @@ class InspectionReport extends Model
     {
         return $this->status === 'cancelled';
     }
+
+
+
+
+//     protected static function booted()
+// {
+//     static::updated(function ($report) {
+
+//         // 🔥 only run when status actually changed
+//         if (!$report->wasChanged('status')) {
+//             return;
+//         }
+
+//         // 🔗 relation check
+//         $assign = $report->inspectionAssign;
+
+//         if (!$assign) {
+//             return;
+//         }
+
+//         // 🔥 status mapping (report → assign)
+//         $map = [
+//             'started'   => 'inspection',
+//             'completed' => 'completed',
+//             'cancelled' => 'cancelled',
+//         ];
+
+//         // 🔎 get mapped status
+//         $newStatus = $map[$report->status] ?? null;
+
+//         // ❌ if no mapping found, stop
+//         if (!$newStatus) {
+//             return;
+//         }
+
+//         // 🔄 update assign safely
+//         $assign->update([
+//             'status' => $newStatus
+//         ]);
+//     });
+// }
 }

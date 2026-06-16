@@ -128,7 +128,12 @@ Route::prefix('v1')->group(function () {
             Route::post('/{id}/favorite', [AdminInspectionReportController::class, 'toggleFavorite']);
         });
 
+        //Homeowner report routes
+            Route::get('/homeowner/reports/{id}', [InspectionReportController::class, 'homeownerReport']);
 
+            Route::post('/homeowner/reports/{id}/note', [InspectionReportController::class, 'homeownerNote']);
+
+            Route::get('/homeowner/reports/{id}/share', [InspectionReportController::class, 'shareReport']);
 
 
 
