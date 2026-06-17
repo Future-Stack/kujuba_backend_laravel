@@ -37,7 +37,10 @@ class InspectionBooking extends Model
     {
         return $this->belongsTo(User::class, 'homeowner_id');
     }
-
+        public function inspectionAssign()
+        {
+            return $this->hasOne(InspectionAssign::class, 'inspection_booking_id');
+        }
 
     public function inspectionTypes()
     {

@@ -20,6 +20,7 @@ use App\Http\Controllers\InspectionTypeController;
 use App\Http\Controllers\User\GoogleAuthController;
 use App\Http\Controllers\InspectionReportController;
 use App\Http\Controllers\Admin\AdminInspectionReportController;
+use App\Http\Controllers\Admin\UserManagementController;
 
 
 
@@ -137,7 +138,19 @@ Route::prefix('v1')->group(function () {
 
 
 
+//Admin user  dashbaord route
 
+
+        Route::prefix('admin/users')->group(function () {
+            Route::get('/dashboard-stats', [UserManagementController::class, 'stats']);
+
+            Route::get('/', [UserManagementController::class, 'index']);
+            Route::get('/{id}', [UserManagementController::class, 'show']);
+
+            Route::post('/{id}/suspend', [UserManagementController::class, 'suspend']);
+            Route::post('/{id}/unsuspend', [UserManagementController::class, 'unsuspend']);
+
+        });
 
 
 
