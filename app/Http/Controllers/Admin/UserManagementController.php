@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\InspectionAssign;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
 
 class UserManagementController extends Controller
 {
@@ -157,94 +158,95 @@ public function show($id)
     }
 
 
-//user dashboard stats
     public function stats()
-{
-    // ===== USERS =====
-    $totalUsers = User::count();
+    {
+        $now = Carbon::now();
+        $lastMonth = Carbon::now()->subMonth();
 
-    $currentMonthUsers = User::whereMonth('created_at', now()->month)
-        ->whereYear('created_at', now()->year)
-        ->count();
+        // ================= USERS (ONLY HOMEOWNERS) =================
+        $totalUsers = User::where('user_type', 'homeowner')->count();
 
-    $lastMonthUsers = User::whereMonth('created_at', now()->subMonth()->month)
-        ->whereYear('created_at', now()->subMonth()->year)
-        ->count();
+        $currentMonthUsers = User::where('user_type', 'homeowner')
+            ->whereMonth('created_at', $now->month)
+            ->whereYear('created_at', $now->year)
+            ->count();
 
-    $userGrowth = $lastMonthUsers > 0
-        ? round((($currentMonthUsers - $lastMonthUsers) / $lastMonthUsers) * 100, 2)
-        : 100;
+        $lastMonthUsers = User::where('user_type', 'homeowner')
+            ->whereMonth('created_at', $lastMonth->month)
+            ->whereYear('created_at', $lastMonth->year)
+            ->count();
 
-    // ===== ACTIVE INSPECTIONS =====
-    $activeInspections = InspectionAssign::whereIn('status', ['inspection', 'started'])
-        ->count();
+        $userGrowth = $lastMonthUsers > 0
+            ? round((($currentMonthUsers - $lastMonthUsers) / $lastMonthUsers) * 100, 2)
+            : 100;
 
-    $currentMonthActive = InspectionAssign::whereIn('status', ['inspection', 'started'])
-        ->whereMonth('created_at', now()->month)
-        ->whereYear('created_at', now()->year)
-        ->count();
+        // ================= ACTIVE INSPECTIONS =================
+        $activeInspections = InspectionAssign::whereIn('status', ['inspection', 'started'])->count();
 
-    $lastMonthActive = InspectionAssign::whereIn('status', ['inspection', 'started'])
-        ->whereMonth('created_at', now()->copy()->subMonth()->month)
-        ->whereYear('created_at', now()->copy()->subMonth()->year)
-        ->count();
+        $currentMonthActive = InspectionAssign::whereIn('status', ['inspection', 'started'])
+            ->whereMonth('created_at', $now->month)
+            ->whereYear('created_at', $now->year)
+            ->count();
 
-    $activeGrowth = $lastMonthActive > 0
-        ? round((($currentMonthActive - $lastMonthActive) / $lastMonthActive) * 100, 2)
-        : 100;
+        $lastMonthActive = InspectionAssign::whereIn('status', ['inspection', 'started'])
+            ->whereMonth('created_at', $lastMonth->month)
+            ->whereYear('created_at', $lastMonth->year)
+            ->count();
 
-    // ===== COMPLETED INSPECTIONS =====
-    $completedInspections = InspectionAssign::where('status', 'completed')
-        ->count();
+        $activeGrowth = $lastMonthActive > 0
+            ? round((($currentMonthActive - $lastMonthActive) / $lastMonthActive) * 100, 2)
+            : 100;
 
-    $currentMonthCompleted = InspectionAssign::where('status', 'completed')
-        ->whereMonth('created_at', now()->month)
-        ->whereYear('created_at', now()->year)
-        ->count();
+        // ================= COMPLETED INSPECTIONS =================
+        $completedInspections = InspectionAssign::where('status', 'completed')->count();
 
-    $lastMonthCompleted = InspectionAssign::where('status', 'completed')
-        ->whereMonth('created_at', now()->copy()->subMonth()->month)
-        ->whereYear('created_at', now()->copy()->subMonth()->year)
-        ->count();
+        $currentMonthCompleted = InspectionAssign::where('status', 'completed')
+            ->whereMonth('created_at', $now->month)
+            ->whereYear('created_at', $now->year)
+            ->count();
 
-    $completedGrowth = $lastMonthCompleted > 0
-        ? round((($currentMonthCompleted - $lastMonthCompleted) / $lastMonthCompleted) * 100, 2)
-        : 100;
+        $lastMonthCompleted = InspectionAssign::where('status', 'completed')
+            ->whereMonth('created_at', $lastMonth->month)
+            ->whereYear('created_at', $lastMonth->year)
+            ->count();
 
-    // ===== CANCELLED INSPECTIONS =====
-    $cancelledInspections = InspectionAssign::where('status', 'cancelled')
-        ->count();
+        $completedGrowth = $lastMonthCompleted > 0
+            ? round((($currentMonthCompleted - $lastMonthCompleted) / $lastMonthCompleted) * 100, 2)
+            : 100;
 
-    $currentMonthCancelled = InspectionAssign::where('status', 'cancelled')
-        ->whereMonth('created_at', now()->month)
-        ->whereYear('created_at', now()->year)
-        ->count();
+        // ================= CANCELLED INSPECTIONS =================
+        $cancelledInspections = InspectionAssign::where('status', 'cancelled')->count();
 
-    $lastMonthCancelled = InspectionAssign::where('status', 'cancelled')
-        ->whereMonth('created_at', now()->copy()->subMonth()->month)
-        ->whereYear('created_at', now()->copy()->subMonth()->year)
-        ->count();
+        $currentMonthCancelled = InspectionAssign::where('status', 'cancelled')
+            ->whereMonth('created_at', $now->month)
+            ->whereYear('created_at', $now->year)
+            ->count();
 
-    $cancelledGrowth = $lastMonthCancelled > 0
-        ? round((($currentMonthCancelled - $lastMonthCancelled) / $lastMonthCancelled) * 100, 2)
-        : 100;
+        $lastMonthCancelled = InspectionAssign::where('status', 'cancelled')
+            ->whereMonth('created_at', $lastMonth->month)
+            ->whereYear('created_at', $lastMonth->year)
+            ->count();
 
-    return response()->json([
-        'success' => true,
-        'data' => [
+        $cancelledGrowth = $lastMonthCancelled > 0
+            ? round((($currentMonthCancelled - $lastMonthCancelled) / $lastMonthCancelled) * 100, 2)
+            : 100;
 
-            'total_users' => $totalUsers,
-            'user_growth_percentage' => $userGrowth,
+        // ================= RESPONSE =================
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'total_homeowners' => $totalUsers,
+                'user_growth_percentage' => $userGrowth,
 
-            'active_inspections' => $activeInspections,
-            'active_growth_percentage' => $activeGrowth,
+                'active_inspections' => $activeInspections,
+                'active_growth_percentage' => $activeGrowth,
 
-            'completed_inspections' => $completedInspections,
-            'completed_growth_percentage' => $completedGrowth,
+                'completed_inspections' => $completedInspections,
+                'completed_growth_percentage' => $completedGrowth,
 
-            'cancelled_inspections' => $cancelledInspections,
-            'cancelled_growth_percentage' => $cancelledGrowth,
-        ]
-    ]);
-}
+                'cancelled_inspections' => $cancelledInspections,
+                'cancelled_growth_percentage' => $cancelledGrowth,
+            ]
+        ]);
+    }
 }
