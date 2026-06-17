@@ -110,24 +110,17 @@ class AdminInspectionReportController extends Controller
      */
     public function archive($id)
     {
-        $report = InspectionReport::findOrFail($id);
+         $report = InspectionReport::findOrFail($id);
 
-        if ($report->status === 'archived') {
+            $report->update([
+                'is_favorite' => !$report->is_favorite
+            ]);
+
             return response()->json([
-                'success' => false,
-                'message' => 'Already archived'
-            ], 400);
-        }
-
-        $report->update([
-            'status' => 'archived'
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Report archived successfully'
-        ]);
-    }
+                'success' => true,
+                'data' => $report
+            ]);
+     }
 
     /**
      * ⭐ FAVORITE TOGGLE
