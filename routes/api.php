@@ -46,7 +46,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
     Route::post('reset-password', [AuthController::class, 'resetPassword']);
      // Google OAuth (public, no auth required)
-    //Route::post('google/token', [GoogleAuthController::class, 'tokenLogin']);
+    Route::post('google/token', [GoogleAuthController::class, 'tokenLogin']);
 
 
 
