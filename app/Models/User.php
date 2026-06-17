@@ -57,4 +57,11 @@ class User extends Authenticatable
     {
         return $this->hasOne(Profile::class, 'user_id');
     }
+
+    
+
+    public function inspectionBookings()
+    {
+        return $this->hasMany(InspectionBooking::class, 'homeowner_id');
+    }
 }

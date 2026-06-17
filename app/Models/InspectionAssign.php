@@ -26,4 +26,9 @@ class InspectionAssign extends Model
     {
         return $this->hasOne(InspectionReport::class);
     }
+
+    public function inspectionReport()
+{
+    return $this->hasOne(InspectionReport::class, 'inspection_assign_id');
+}
 }
