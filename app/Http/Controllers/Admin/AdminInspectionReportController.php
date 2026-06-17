@@ -17,12 +17,19 @@ class AdminInspectionReportController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'total_reports' => InspectionReport::count(),
-                'total_pending_reports' => InspectionReport::where('status', 'pending')->count(),
-                'total_completed_reports' => InspectionReport::where('status', 'completed')->count(),
-                'total_cancelled_reports' => InspectionReport::where('status', 'cancelled')->count(),
-                'total_archived_reports' => InspectionReport::where('status', 'archived')->count(),
-            ]
+            'total_reports' => InspectionReport::count(),
+
+           
+
+            'total_started_reports' => InspectionReport::where('status', 'started')->count(),
+
+            'total_completed_reports' => InspectionReport::where('status', 'completed')->count(),
+
+            
+
+            // 🔥 archived = favorite true
+            'total_archived_reports' => InspectionReport::where('is_favorite', true)->count(),
+        ]
         ]);
     }
 
