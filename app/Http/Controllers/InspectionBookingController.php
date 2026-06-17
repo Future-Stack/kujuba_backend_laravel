@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Stripe\Stripe;
 use Stripe\PaymentIntent;
-use App\Models\InspectionType; 
+use App\Models\InspectionType;
 use Stripe\Transfer;
 use App\Models\Profile;
 
@@ -31,7 +31,7 @@ class InspectionBookingController extends Controller
                 ], 401);
             }
 
-            $tabStatus = $request->query('tab', 'active'); 
+            $tabStatus = $request->query('tab', 'active');
 
             $query = InspectionBooking::with(['inspectionTypes', 'payment'])
                                     ->where('homeowner_id', $userId);
@@ -113,19 +113,19 @@ class InspectionBookingController extends Controller
             'scheduled_date'        => 'required|date_format:Y-m-d',
             'scheduled_time'        => 'required|date_format:H:i',
             'scheduled_shift'       => 'required|string|max:255',
-            'urgent_status'         => 'nullable|boolean', 
-            
-            'payment_method_id'     => 'nullable|string', 
-            
+            'urgent_status'         => 'nullable|boolean',
+
+            'payment_method_id'     => 'nullable|string',
+
             'latitude'              => 'nullable|numeric',
             'longitude'             => 'nullable|numeric',
         ]);
 
         $inspectionTypes = InspectionType::whereIn('id', $request->inspection_type_ids)->get();
-        $subtotal = $inspectionTypes->sum('price'); 
-        
-        $platformFee = 20.00; 
-        
+        $subtotal = $inspectionTypes->sum('price');
+
+        $platformFee = 20.00;
+
         $total = $subtotal + $platformFee;
 
         DB::beginTransaction();
@@ -135,13 +135,13 @@ class InspectionBookingController extends Controller
 
             if (!$userId) {
                 return response()->json([
-                    'success' => false, 
+                    'success' => false,
                     'message' => 'Unauthorized user access context.'
                 ], 401);
             }
 
             $stripeSecret = config('services.stripe.secret') ?? env('STRIPE_SECRET');
-            
+
             if (!$stripeSecret) {
                 return response()->json([
                     'success' => false,
@@ -172,7 +172,7 @@ class InspectionBookingController extends Controller
                     'message' => 'Stripe payment verification failed. Status: ' . $paymentIntent->status
                 ], 402);
             }
-            
+
             $imagePath = null;
             if ($request->hasFile('property_img')) {
                 $imagePath = $request->file('property_img')->store('inspections', 'public');
@@ -223,7 +223,7 @@ class InspectionBookingController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Booking & Stripe Exception: ' . $e->getMessage());
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Process Failed: ' . $e->getMessage(),
@@ -312,7 +312,7 @@ class InspectionBookingController extends Controller
                 }
             }
 
-            
+
             $booking->update([
                 'status' => 'completed'
             ]);
@@ -326,7 +326,7 @@ class InspectionBookingController extends Controller
             if ($booking->payment) {
                 $booking->payment->update([
                     'is_disbursed' => true,
-                    'stripe_id' => $transferId 
+                    'stripe_id' => $transferId
                 ]);
             }
 
@@ -364,13 +364,13 @@ class InspectionBookingController extends Controller
     //         'scheduled_date'        => 'required|date_format:Y-m-d',
     //         'scheduled_time'        => 'required|date_format:H:i',
     //         'scheduled_shift'       => 'required|string|max:255',
-    //         'urgent_status'         => 'nullable|boolean', 
-            
+    //         'urgent_status'         => 'nullable|boolean',
+
     //         'subtotal'              => 'required|numeric',
     //         'platform_fee'          => 'required|numeric',
     //         'total'                 => 'required|numeric',
     //         'trx_id'                => 'nullable|string',
-            
+
     //         'latitude'              => 'nullable|numeric',
     //         'longitude'             => 'nullable|numeric',
     //     ]);
@@ -382,7 +382,7 @@ class InspectionBookingController extends Controller
 
     //         if (!$userId) {
     //             return response()->json([
-    //                 'success' => false, 
+    //                 'success' => false,
     //                 'message' => 'Unauthorized user access context.'
     //             ], 401);
     //         }

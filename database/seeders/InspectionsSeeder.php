@@ -61,6 +61,8 @@ class InspectionsSeeder extends Seeder
             [
                 'subtotal'              => 649.00,
                 'platform_fee'          => 20.00,
+                'inspector_share'       => 649.00,
+                'admin_share'           => 20.00,
                 'total'                 => 669.00,
                 'trx_id'                => 'TRX-001',
                 'status'                => 'pending',

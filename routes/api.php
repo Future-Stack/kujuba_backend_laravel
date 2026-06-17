@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Booking\InspectionBookingRequestCotroller;
 use App\Http\Controllers\Faq\FaqController;
 use App\Http\Controllers\Inspection\InspectionController;
 use App\Http\Controllers\Inspection_Assign\InspectionAssignsController;
@@ -64,13 +65,13 @@ Route::prefix('v1')->group(function () {
 
         Route::post('/profile/update', [AuthController::class, 'updateProfile']);
 
-        Route::post('/book-inspection', [InspectionBookingController::class, 'store']);
+        Route::post('/book-inspection', [InspectionBookingRequestCotroller::class, 'store']);
 
         Route::get('/my-inspections', [InspectionBookingController::class, 'index']);
-        
+
         Route::post('/booking/complete/{bookingId}', [InspectionBookingController::class, 'completeInspectionAndPayout']);
 
-        
+
 
 
         //FAQ
@@ -232,4 +233,11 @@ Route::prefix('v1')->group(function () {
 
 
     });
+
+    //Booking Request Webhook Payment
+    Route::get('/booking/success', [InspectionBookingRequestCotroller::class, 'BookingSuccess'])->name('booking.success');
+    Route::get('/booking/cancel', [InspectionBookingRequestCotroller::class, 'BookingCancel'])->name('booking.cancel');
+    Route::post('/booking/webhook-handle', [InspectionBookingRequestCotroller::class, 'handleWebhook'])->name('booking.webhook-handle');
+
+
 });
