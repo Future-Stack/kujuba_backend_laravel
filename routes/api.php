@@ -45,7 +45,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
     Route::post('reset-password', [AuthController::class, 'resetPassword']);
      // Google OAuth (public, no auth required)
-    Route::post('google/token', [GoogleAuthController::class, 'tokenLogin']);
+    //Route::post('google/token', [GoogleAuthController::class, 'tokenLogin']);
 
 
 
@@ -66,6 +66,10 @@ Route::prefix('v1')->group(function () {
         Route::post('/book-inspection', [InspectionBookingController::class, 'store']);
 
         Route::get('/my-inspections', [InspectionBookingController::class, 'index']);
+        
+        Route::post('/booking/complete/{bookingId}', [InspectionBookingController::class, 'completeInspectionAndPayout']);
+
+        
 
 
         //FAQ

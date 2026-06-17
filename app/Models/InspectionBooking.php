@@ -49,6 +49,11 @@ class InspectionBooking extends Model
         );
     }
 
+    public function assignment()
+    {
+        return $this->hasOne(InspectionAssign::class, 'inspection_booking_id', 'id');
+    }
+
     protected $casts = [
         'booking_date'   => 'date',
         'scheduled_date' => 'date',

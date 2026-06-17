@@ -17,12 +17,19 @@ class AdminInspectionReportController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'total_reports' => InspectionReport::count(),
-                'total_pending_reports' => InspectionReport::where('status', 'pending')->count(),
-                'total_completed_reports' => InspectionReport::where('status', 'completed')->count(),
-                'total_cancelled_reports' => InspectionReport::where('status', 'cancelled')->count(),
-                'total_archived_reports' => InspectionReport::where('status', 'archived')->count(),
-            ]
+            'total_reports' => InspectionReport::count(),
+
+           
+
+            'total_started_reports' => InspectionReport::where('status', 'started')->count(),
+
+            'total_completed_reports' => InspectionReport::where('status', 'completed')->count(),
+
+            
+
+            // 🔥 archived = favorite true
+            'total_archived_reports' => InspectionReport::where('is_favorite', true)->count(),
+        ]
         ]);
     }
 
@@ -110,24 +117,17 @@ class AdminInspectionReportController extends Controller
      */
     public function archive($id)
     {
-        $report = InspectionReport::findOrFail($id);
+         $report = InspectionReport::findOrFail($id);
 
-        if ($report->status === 'archived') {
+            $report->update([
+                'is_favorite' => !$report->is_favorite
+            ]);
+
             return response()->json([
-                'success' => false,
-                'message' => 'Already archived'
-            ], 400);
-        }
-
-        $report->update([
-            'status' => 'archived'
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Report archived successfully'
-        ]);
-    }
+                'success' => true,
+                'data' => $report
+            ]);
+     }
 
     /**
      * ⭐ FAVORITE TOGGLE

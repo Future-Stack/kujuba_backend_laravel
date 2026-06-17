@@ -20,11 +20,11 @@ class InspectionReportObserver
         }
 
         // → assign status mapping
-        // $map = [
-        //     'started'   => 'inspection',
-        //     'completed' => 'completed',
-        //     'cancelled' => 'cancelled',
-        // ];
+        $map = [
+            'started'   => 'started',
+            'completed' => 'completed',
+            'cancelled' => 'cancelled',
+        ];
 
         if (isset($map[$report->status])) {
             $assign->update([

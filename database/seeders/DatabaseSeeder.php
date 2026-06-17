@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             PagesSeeder::class,
             InspectionsSeeder::class,
             ReviewsSeeder::class,
+            FaqSeeder::class,
         ]);
     }
 }
