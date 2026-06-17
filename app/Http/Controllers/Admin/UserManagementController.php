@@ -73,6 +73,8 @@ public function index(Request $request)
             'image' => $user->profile?->profile_img
                 ? asset('storage/' . $user->profile->profile_img)
                 : null,
+
+                'address' => $user->profile?->address,
             // STATS
             'total_inspections' => $user->total_inspections,
             'cancelled_inspections' => $user->cancelled_inspections,
@@ -110,6 +112,7 @@ public function show($id)
             'image' => $user->profile?->profile_img
                 ? asset('storage/' . $user->profile->profile_img)
                 : null,
+                'address' => $user->profile?->address,
 
             // STATS
             'total_inspections' => $user->inspectionBookings()->count(),
