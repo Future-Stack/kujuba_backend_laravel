@@ -65,6 +65,7 @@ public function index(Request $request)
             'first_name' => $user->first_name,
             'last_name' => $user->last_name,
             'email' => $user->email,
+            'phone' => $user->profile?->phone,
             'user_type' => $user->user_type,
             'status' => $user->status,
 
@@ -105,6 +106,7 @@ public function show($id)
             'first_name' => $user->first_name,
             'last_name' => $user->last_name,
             'email' => $user->email,
+            'phone' => $user->profile?->phone,
             'user_type' => $user->user_type,
             'status' => $user->status,
 
