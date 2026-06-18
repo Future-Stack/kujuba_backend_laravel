@@ -30,17 +30,19 @@ class InspectionBooking extends Model
     {
         return $this->hasOne(InspectionPayment::class, 'inspection_booking_id');
     }
-     /**
+
+    /**
      * 👤 HOMEOWNER relation (FIXED)
      */
     public function user()
     {
         return $this->belongsTo(User::class, 'homeowner_id');
     }
-        public function inspectionAssign()
-        {
-            return $this->hasOne(InspectionAssign::class, 'inspection_booking_id');
-        }
+
+    public function inspectionAssign()
+    {
+        return $this->hasOne(InspectionAssign::class, 'inspection_booking_id');
+    }
 
     public function inspectionTypes()
     {
@@ -63,9 +65,8 @@ class InspectionBooking extends Model
     }
 
 
-
     protected $casts = [
-        'booking_date'   => 'date',
+        'booking_date' => 'date',
         'scheduled_date' => 'date',
     ];
 
