@@ -229,23 +229,93 @@ class InspectionReportController extends Controller
     /**
      * HOMEOWNER REPORT
      */
-    public function homeownerReport($id)
-    {
-        $report = InspectionReport::with('inspectionAssign.inspectionBooking')->findOrFail($id);
+  public function homeownerReport($id)
+{
+    $report = InspectionReport::with([
+        'inspectionAssign.inspector',
+        'inspectionAssign.inspectionBooking.inspectionTypes',
+        'inspectionAssign.inspectionBooking.payment'
+    ])->findOrFail($id);
 
-        if ($report->inspectionAssign->inspectionBooking->user_id !== auth()->id()) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
-        }
-
-        if ($report->status !== 'completed') {
-            return response()->json(['success' => false, 'message' => 'Not completed'], 403);
-        }
-
+    // ================= AUTH CHECK =================
+    if ($report->inspectionAssign->inspectionBooking->user_id !== auth()->id()) {
         return response()->json([
-            'success' => true,
-            'data' => $this->formatReport($report)
-        ]);
+            'success' => false,
+            'message' => 'Unauthorized'
+        ], 403);
     }
+
+    // ================= STATUS CHECK =================
+    if ($report->status !== 'completed') {
+        return response()->json([
+            'success' => false,
+            'message' => 'Not completed'
+        ], 403);
+    }
+
+    $assign = $report->inspectionAssign;
+    $booking = $assign?->inspectionBooking;
+
+    return response()->json([
+        'success' => true,
+
+        'data' => [
+
+            // ================= REPORT =================
+            'report' => $this->formatReport($report),
+
+            // ================= INSPECTOR =================
+            'inspector' => [
+                'id' => $assign?->inspector?->id,
+                'name' => trim(
+                    ($assign?->inspector?->first_name ?? '') . ' ' .
+                    ($assign?->inspector?->last_name ?? '')
+                ),
+                'email' => $assign?->inspector?->email,
+            ],
+
+            // ================= BOOKING =================
+            'booking' => [
+                'id' => $booking?->id,
+                'booking_uid' => $booking ? 'INS-' . (1000 + $booking->id) : null,
+                'property_address' => $booking?->property_address,
+                'property_type' => $booking?->property_type,
+                'property_size' => $booking?->property_size,
+                'note' => $booking?->note,
+                'scheduled_date' => $booking?->scheduled_date,
+                'scheduled_time' => $booking?->scheduled_time,
+                'scheduled_shift' => $booking?->scheduled_shift,
+                'urgent_status' => (bool) ($booking?->urgent_status ?? 0),
+                'status' => $booking?->status,
+                'property_img' => $booking?->property_img
+                    ? asset('storage/' . $booking->property_img)
+                    : null,
+            ],
+
+            // ================= INSPECTION TYPES =================
+            'inspection_types' => $booking?->inspectionTypes->map(function ($type) {
+                return [
+                    'id' => $type->id,
+                    'title' => $type->title,
+                    'short_desc' => $type->short_desc,
+                    'price' => (float) $type->price,
+                    'img' => $type->img
+                        ? asset('storage/' . $type->img)
+                        : null,
+                ];
+            })->values(),
+
+            // ================= PAYMENT =================
+            // 'payment' => [
+            //     'subtotal' => $booking?->payment?->subtotal,
+            //     'platform_fee' => $booking?->payment?->platform_fee,
+            //     'total' => $booking?->payment?->total,
+            //     'trx_id' => $booking?->payment?->trx_id,
+            //     'status' => $booking?->payment?->status,
+            // ],
+        ]
+    ]);
+}
 
     /**
      * HOMEOWNER FEEDBACK
@@ -295,4 +365,111 @@ class InspectionReportController extends Controller
                 : null
         ]);
     }
+
+
+
+
+
+ public function inspectorReportHistory($inspectorId)
+{
+    $reports = InspectionReport::with([
+            'inspectionAssign.inspector',
+            'inspectionAssign.inspectionBooking.payment',
+            'inspectionAssign.inspectionBooking.inspectionTypes',
+            'inspectionAssign.review' // 👈 ADD THIS
+        ])
+        ->whereHas('inspectionAssign', function ($q) use ($inspectorId) {
+            $q->where('inspector_id', $inspectorId);
+        })
+        ->where('status', 'completed')
+        ->orderBy('completed_at', 'desc')
+        ->get();
+
+    return response()->json([
+        'success' => true,
+        'count' => $reports->count(),
+        'data' => $reports->map(function ($report) {
+
+            $assign = $report->inspectionAssign;
+            $booking = $assign?->inspectionBooking;
+            $review  = $assign?->review; // 👈 NEW
+
+            return [
+
+                // ================= REPORT =================
+                'id' => $report->id,
+                'inspection_assign_id' => $report->inspection_assign_id,
+                'notes' => $report->notes,
+                'status' => $report->status,
+                'completed_at' => $report->completed_at,
+
+                'report_file' => $report->report_file
+                    ? asset('storage/' . $report->report_file)
+                    : null,
+
+                // ================= INSPECTOR =================
+                'inspector' => [
+                    'id' => $assign?->inspector?->id,
+                    'name' => trim(
+                        ($assign?->inspector?->first_name ?? '') . ' ' .
+                        ($assign?->inspector?->last_name ?? '')
+                    ),
+                    'email' => $assign?->inspector?->email,
+                ],
+
+                // ================= BOOKING =================
+                'booking' => [
+                    'id' => $booking?->id,
+                    'booking_uid' => $booking ? 'INS-' . (1000 + $booking->id) : null,
+                    'property_address' => $booking?->property_address,
+                    'property_type' => $booking?->property_type,
+                    'property_size' => $booking?->property_size,
+                    'note' => $booking?->note,
+                    'scheduled_date' => $booking?->scheduled_date,
+                    'scheduled_time' => $booking?->scheduled_time,
+                    'scheduled_shift' => $booking?->scheduled_shift,
+                    'urgent_status' => (bool) ($booking?->urgent_status ?? 0),
+                    'status' => $booking?->status,
+                    'property_img' => $booking?->property_img
+                        ? asset('storage/' . $booking->property_img)
+                        : null,
+                ],
+
+                // ================= PAYMENT =================
+                'payment' => [
+                    'subtotal' => $booking?->payment?->subtotal,
+                    'platform_fee' => $booking?->payment?->platform_fee,
+                    'total' => $booking?->payment?->total,
+                    'trx_id' => $booking?->payment?->trx_id,
+                    'status' => $booking?->payment?->status,
+                ],
+
+                // ================= INSPECTION TYPES =================
+                'inspection_types' => $booking?->inspectionTypes
+                    ? $booking->inspectionTypes->map(function ($type) {
+                        return [
+                            'id' => $type->id,
+                            'title' => $type->title,
+                            'short_desc' => $type->short_desc,
+                            'price' => (float) $type->price,
+                            'img' => $type->img
+                                ? asset('storage/' . $type->img)
+                                : null,
+                        ];
+                    })->values()
+                    : [],
+
+                // ================= REVIEW (NEW) =================
+                'review' => $review ? [
+                    'rating' => $review->rating,
+                    'description' => $review->description,
+                    'homeowner_id' => $review->homeowner_id,
+                ] : null,
+
+                // ================= EXTRA FEEDBACK =================
+                'homeowner_feedback' => $report->homeowner_feedback ?? null,
+            ];
+        })
+    ]);
+}
 }

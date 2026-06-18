@@ -23,6 +23,7 @@ use App\Http\Controllers\InspectionReportController;
 use App\Http\Controllers\Admin\AdminInspectionReportController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\InspectorManagementController;
+use App\Http\Controllers\Admin\AdminDashboardController;
 
 
 
@@ -104,6 +105,8 @@ Route::prefix('v1')->group(function () {
     //Rehana Mim
         //Inspection report routes
         Route::prefix('inspection-reports')->group(function () {
+            //inspector his own report history
+            Route::get('/history/{inspectorId}', [InspectionReportController::class, 'inspectorReportHistory']);
 
             // start inspection
             Route::post('/{id}/start', [InspectionReportController::class, 'start']);
@@ -176,8 +179,10 @@ Route::prefix('v1')->group(function () {
         Route::post('/{id}/reactivate', [InspectorManagementController::class, 'reactivate']);
     });
 
-
-
+//Admin dashbaord overview route
+Route::prefix('admin/dashboard')->group(function () {
+    Route::get('/overview', [AdminDashboardController::class, 'overview']);
+});
 
 
 
