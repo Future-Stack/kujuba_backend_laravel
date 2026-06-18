@@ -13,4 +13,15 @@ class InspectionPayment extends Model
         'trx_id', 'status', 'urgentStatus', 'stripe_id',
         'is_disbursed', 'penalty_amount', 'refunded_amount', 'urgent_fee', 'inspector_share', 'admin_share'
     ];
+
+
+
+
+
+    public function inspectionBooking()
+{
+    return $this->belongsTo(InspectionBooking::class, 'inspection_booking_id');
 }
+}
+
+
