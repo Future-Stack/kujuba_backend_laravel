@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Booking;
 
 use App\Http\Controllers\Controller;
+use App\Models\InspectionAssign;
 use App\Models\InspectionBooking;
 use App\Models\InspectionPayment;
 use App\Models\InspectionType;
 use App\Models\Setting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Stripe\PaymentIntent;
@@ -223,6 +225,124 @@ class InspectionBookingRequestCotroller extends Controller
 
         } catch (\Exception $e) {
             return response('Webhook Error: ' . $e->getMessage(), 400);
+        }
+    }
+
+    public function statusBookingList(Request $request)
+    {
+        try {
+            $filter = $request->query('filter');
+            $user = Auth::user();
+
+
+            // Base query with relationships
+            $query = InspectionBooking::with(['payment', 'inspectionTypes'])
+                ->whereHas('payment', fn($q) => $q->where('status', 'paid'))
+                ->whereDoesntHave('declines', function ($q) use ($user) {
+                    $q->where('inspector_id', $user->id);
+                })
+                ->latest();
+
+            // Apply filter logic
+            if ($filter === 'urgent') {
+                $query->where('urgent_status', true);
+            } elseif ($filter === 'rescheduled') {
+                $query->where('isRescheduled', true);
+            } elseif ($filter === 'new') {
+                $query->limit(5);
+            }
+
+            $bookings = $query->get()->map(function ($booking) {
+                $payment = $booking->payment;
+
+                $type = $booking->inspectionTypes->pluck('title')->toArray();
+                $img =  $booking->inspectionTypes->pluck('img')->toArray();
+                $price  = $booking->inspectionTypes->pluck('price')->toArray();
+
+                return [
+                    'id' => $booking->id,
+                    'inspection_img' =>$img,
+                    'inspection_type' => $type,
+                    'inspection_price' => $price,
+                    'property_address' => $booking->property_address,
+                    'property_type' => $booking->property_type,
+                    'property_size' => $booking->property_size,
+                    'property_img' => $booking->property_img,
+                    'scheduled_date' => $booking->scheduled_date->format('Y-m-d'),
+                    'scheduled_time' => $booking->scheduled_time,
+                    'urgent_status' => $booking->urgent_status,
+                    'rescheduled_status' => $booking->isRescheduled,
+                    'status' => $booking->status,
+                    'note' => $booking->note,
+                    'price' => $payment ? number_format($payment->subtotal, 2) : null,
+                    'distance' => $booking->distance ?? null,
+                    'estimate_time' => $booking->estimate_time ?? null,
+                    'latitude' => $booking->latitude,
+                    'longitude' => $booking->longitude,
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $bookings,
+            ], 200);
+
+        } catch (\Exception $e) {
+            \Log::error('Booking list fetch failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function inspectionDetails(string $id)
+    {
+        try {
+            $booking = InspectionBooking::with(['payment', 'inspectionTypes'])
+                ->findOrFail($id);
+
+            $payment = $booking->payment;
+
+            $response = [
+                'id'                => $booking->id,
+                'inspection_image'  => $booking->inspectionTypes->pluck('img')->toArray(),
+                'inspection_types'  => $booking->inspectionTypes->pluck('title')->toArray(),
+                'property_details'  => [
+                    'address'       => $booking->property_address,
+                    'type'          => $booking->property_type,
+                    'size'          => $booking->property_size,
+                    'latitude'      => $booking->latitude,
+                    'longitude'     => $booking->longitude,
+                ],
+                'schedule'          => [
+                    'date'          => optional($booking->scheduled_date)->format('Y-m-d'),
+                    'time'          => $booking->scheduled_time,
+                    'shift'         => $booking->scheduled_shift,
+                ],
+                'payment_breakdown' => [
+                    'inspection_fee' => $payment ? number_format($payment->subtotal, 2) : null,
+                    'urgent_fee'     => $booking->urgent_status ? number_format(50, 2) : null,
+                    'total_payable'  => $payment ? number_format($payment->total, 2) : null,
+                    'status'         => $payment ? $payment->status : 'unpaid',
+                ],
+                'note'              => $booking->note,
+                'urgent_status'     => $booking->urgent_status,
+                'status'            => $booking->status,
+                'property_img'      => $booking->property_img,
+            ];
+
+            return response()->json([
+                'success' => true,
+                'data'    => $response,
+            ], 200);
+
+        } catch (\Exception $e) {
+            \Log::error('Inspection details fetch failed: '.$e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
         }
     }
 }

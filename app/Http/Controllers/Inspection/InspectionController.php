@@ -185,5 +185,4 @@ class InspectionController extends Controller
         }
     }
 
-
 }

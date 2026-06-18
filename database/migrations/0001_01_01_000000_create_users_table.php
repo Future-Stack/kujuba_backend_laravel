@@ -24,6 +24,7 @@ return new class extends Migration
             $table->string('device_token')->nullable();
             $table->string('status')->default('pending')->comment('pending,active,suspended');
             $table->string('user_type')->nullable()->comment('customer,inspector,admin');
+            $table->decimal('earnings',10,2)->default(0.00);
             $table->timestamps();
         });
 

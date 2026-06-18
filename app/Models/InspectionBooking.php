@@ -9,20 +9,20 @@ class InspectionBooking extends Model
     protected $table = 'inspection_bookings';
 
     protected $fillable = [
-        'homeowner_id', 
-        'property_address', 
-        'property_type', 
+        'homeowner_id',
+        'property_address',
+        'property_type',
         'property_size',
-        'note', 
-        'property_img', 
-        'booking_date', 
-        'scheduled_date', 
-        'scheduled_time', 
-        'scheduled_shift', 
-        'urgent_status', 
-        'status', 
-        'latitude', 
-        'longitude', 
+        'note',
+        'property_img',
+        'booking_date',
+        'scheduled_date',
+        'scheduled_time',
+        'scheduled_shift',
+        'urgent_status',
+        'status',
+        'latitude',
+        'longitude',
         'isRescheduled'
     ];
 
@@ -45,7 +45,7 @@ class InspectionBooking extends Model
     public function inspectionTypes()
     {
         return $this->belongsToMany(
-            InspectionType::class, 
+            InspectionType::class,
             'booking_inspection_type',
             'inspection_booking_id',
             'inspection_type_id'
@@ -57,9 +57,16 @@ class InspectionBooking extends Model
         return $this->hasOne(InspectionAssign::class, 'inspection_booking_id', 'id');
     }
 
+    public function declines()
+    {
+        return $this->hasMany(DeclineInspection::class);
+    }
+
+
+
     protected $casts = [
         'booking_date'   => 'date',
         'scheduled_date' => 'date',
     ];
-    
+
 }

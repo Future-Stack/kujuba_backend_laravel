@@ -217,7 +217,7 @@ Route::prefix('v1')->group(function () {
         //Delete User(self)
         Route::post('/delete-user',[DeleteUsersController::class, 'destroy']);
 
-        //Completed Inspections
+        //Status wise Inspections
         Route::get('/status-inspections',[InspectionController::class, 'statusInspections']);
 
         //Admin Notification Store & sent
@@ -229,8 +229,11 @@ Route::prefix('v1')->group(function () {
         //Fetch All Notifications Record (Admin)
         Route::get('/all-notifications',[NotificationController::class, 'fetchAllNotification']);
 
+        //Status wise Inspections
+        Route::get('/status-bookings',[InspectionBookingRequestCotroller::class, 'statusBookingList']);
 
-
+        //Inspection Details
+        Route::get('/inspection-details/{id}', [InspectionBookingRequestCotroller::class, 'inspectionDetails']);
 
     });
 
@@ -238,6 +241,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/booking/success', [InspectionBookingRequestCotroller::class, 'BookingSuccess'])->name('booking.success');
     Route::get('/booking/cancel', [InspectionBookingRequestCotroller::class, 'BookingCancel'])->name('booking.cancel');
     Route::post('/booking/webhook-handle', [InspectionBookingRequestCotroller::class, 'handleWebhook'])->name('booking.webhook-handle');
+
 
 
 });
