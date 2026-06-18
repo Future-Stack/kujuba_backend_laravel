@@ -22,6 +22,7 @@ use App\Http\Controllers\User\GoogleAuthController;
 use App\Http\Controllers\InspectionReportController;
 use App\Http\Controllers\Admin\AdminInspectionReportController;
 use App\Http\Controllers\Admin\UserManagementController;
+use App\Http\Controllers\Admin\InspectorManagementController;
 
 
 
@@ -157,8 +158,23 @@ Route::prefix('v1')->group(function () {
 
         });
 
+//Admin inspector dashbaord route
+        Route::prefix('admin/inspectors')->group(function () {
 
+        Route::get('/stats', [InspectorManagementController::class, 'stats']);
 
+        Route::get('/', [InspectorManagementController::class, 'index']);
+
+        Route::get('/{id}', [InspectorManagementController::class, 'show']);
+
+        Route::post('/{id}/approve', [InspectorManagementController::class, 'approve']);
+
+        Route::post('/{id}/reject', [InspectorManagementController::class, 'reject']);
+
+        Route::post('/{id}/suspend', [InspectorManagementController::class, 'suspend']);
+
+        Route::post('/{id}/reactivate', [InspectorManagementController::class, 'reactivate']);
+    });
 
 
 
