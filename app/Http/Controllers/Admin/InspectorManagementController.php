@@ -155,15 +155,16 @@ class InspectorManagementController extends Controller
         ]);
     }
 
-    /**
-     *  INSPECTOR DETAILS
-     */
-    public function show($id)
+  /**
+ * INSPECTOR DETAILS
+ */
+public function show($id)
 {
     $inspector = User::with(['profile.inspectionTypes'])
         ->where('user_type', 'inspector')
         ->findOrFail($id);
 
+    // ================= REVIEWS =================
     $averageRating = Review::whereHas('inspectionAssign', function ($q) use ($id) {
         $q->where('inspector_id', $id);
     })->avg('rating');
@@ -172,6 +173,7 @@ class InspectorManagementController extends Controller
         $q->where('inspector_id', $id);
     })->count();
 
+    // ================= PERFORMANCE =================
     $completed = InspectionAssign::where('inspector_id', $id)
         ->where('status', 'completed')
         ->count();
@@ -180,54 +182,59 @@ class InspectorManagementController extends Controller
         ->where('status', 'cancelled')
         ->count();
 
-    // ✅ SAFE EARNINGS CALCULATION
-    $totalEarnings = InspectionPayment::whereHas(
-        'inspectionBooking.inspectionAssign',
-        function ($q) use ($id) {
-            $q->where('inspector_id', $id)
-            ->where('status', 'completed');
-        }
-    )->sum('total');
+    // ================= EARNINGS (FAST - FROM USERS TABLE) =================
+    $totalEarnings = (float) ($inspector->earnings ?? 0);
 
+    // ================= RESPONSE =================
     return response()->json([
         'success' => true,
         'data' => [
             'id' => $inspector->id,
 
-            'name' => trim(($inspector->first_name ?? '') . ' ' . ($inspector->last_name ?? '')),
+            'name' => trim(
+                ($inspector->first_name ?? '') . ' ' . ($inspector->last_name ?? '')
+            ),
+
             'email' => $inspector->email,
             'status' => $inspector->status,
 
+            // PROFILE
             'image' => $inspector->profile?->profile_img
                 ? asset('storage/' . $inspector->profile->profile_img)
                 : null,
 
             'phone' => $inspector->profile?->phone,
             'location' => $inspector->profile?->address,
+
+            // LICENSE INFO
             'license_number' => $inspector->profile?->license_number,
             'license_expiry' => $inspector->profile?->license_expiry,
             'insurance_expiry' => $inspector->profile?->insurance_expiry,
 
-            'member_since' => $inspector->created_at,
+            'member_since' => $inspector->created_at?->format('Y-m-d'),
 
+            // SPECIALIZATIONS
             'specializations' => $inspector->profile?->inspectionTypes
                 ? $inspector->profile->inspectionTypes->pluck('title')->values()
                 : [],
 
+            // REVIEWS
             'reviews' => [
                 'average_rating' => round($averageRating ?? 0, 1),
                 'total_reviews' => $totalReviews,
             ],
 
+            // PERFORMANCE
             'performance' => [
                 'completed' => $completed,
                 'cancelled' => $cancelled,
             ],
 
-            // ✅ FINAL FIXED EARNINGS
-            'total_earnings' => (float) ($totalEarnings ?? 0),
-            'total_earnings_formatted' => '$' . number_format($totalEarnings ?? 0, 2),
+            // EARNINGS
+            'total_earnings' => $totalEarnings,
+            'total_earnings_formatted' => '$' . number_format($totalEarnings, 2),
 
+            // TIMESTAMPS
             'created_at' => $inspector->created_at,
             'updated_at' => $inspector->updated_at,
         ]
