@@ -262,13 +262,16 @@ Route::prefix('admin/dashboard')->group(function () {
         Route::get('/decline-reschedule/{assign_id}',[RescheduleBookingRequestController::class,'declineRequest']);
         Route::get('/accept-reschedule/{assign_id}',[RescheduleBookingRequestController::class,'acceptRequest']);
 
+        //Cancel Booking
+        Route::get('/cancel-booking/{booking_id}',[InspectionBookingRequestCotroller::class,'cancelBookingInspection']);
+
     });
 
     //Booking Request Webhook Payment
     Route::get('/booking/success', [InspectionBookingRequestCotroller::class, 'BookingSuccess'])->name('booking.success');
     Route::get('/booking/cancel', [InspectionBookingRequestCotroller::class, 'BookingCancel'])->name('booking.cancel');
     Route::post('/booking/webhook-handle', [InspectionBookingRequestCotroller::class, 'handleWebhook'])->name('booking.webhook-handle');
-
+    Route::post('/cancel-booking/webhook-handle', [InspectionBookingRequestCotroller::class, 'cancelHandleWebhook'])->name('booking.webhook-handle');
 
 
 });
