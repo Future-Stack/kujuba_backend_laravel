@@ -299,10 +299,11 @@ class InspectionBookingRequestCotroller extends Controller
     public function inspectionDetails(string $id)
     {
         try {
-            $booking = InspectionBooking::with(['payment', 'inspectionTypes'])
+            $booking = InspectionBooking::with(['payment', 'inspectionTypes','inspectionAssign'])
                 ->findOrFail($id);
 
             $payment = $booking->payment;
+            $assigned = $booking->inspectionAssign;
 
             $response = [
                 'id'                => $booking->id,
@@ -319,6 +320,11 @@ class InspectionBookingRequestCotroller extends Controller
                     'date'          => optional($booking->scheduled_date)->format('Y-m-d'),
                     'time'          => $booking->scheduled_time,
                     'shift'         => $booking->scheduled_shift,
+                ],
+                'Inspector Assigned' =>[
+                    'id'  =>    $assigned->id ?? null,
+                    'inspector_id' =>   $assigned->inspector_id ?? null,
+                    'Inspector_name' =>   $assigned->name ?? null,
                 ],
                 'payment_breakdown' => [
                     'inspection_fee' => $payment ? number_format($payment->subtotal, 2) : null,

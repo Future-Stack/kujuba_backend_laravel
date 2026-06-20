@@ -147,7 +147,7 @@ Route::prefix('v1')->group(function () {
 
 
 
-//Admin user  dashbaord route
+        //Admin user  dashbaord route
 
 
         Route::prefix('admin/users')->group(function () {
