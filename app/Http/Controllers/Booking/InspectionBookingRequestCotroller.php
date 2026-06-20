@@ -236,7 +236,7 @@ class InspectionBookingRequestCotroller extends Controller
 
 
             // Base query with relationships
-            $query = InspectionBooking::with(['payment', 'inspectionTypes'])
+            $query = InspectionBooking::with(['payment', 'inspectionTypes','reschedule'])
                 ->whereHas('payment', fn($q) => $q->where('status', 'paid'))
                 ->whereDoesntHave('declines', function ($q) use ($user) {
                     $q->where('inspector_id', $user->id);
@@ -255,7 +255,7 @@ class InspectionBookingRequestCotroller extends Controller
 
             $bookings = $query->get()->map(function ($booking) {
                 $payment = $booking->payment;
-
+                $reschedule = $booking->reschedule ?? null;
                 $type = $booking->inspectionTypes->pluck('title')->toArray();
                 $img =  $booking->inspectionTypes->pluck('img')->toArray();
                 $price  = $booking->inspectionTypes->pluck('price')->toArray();
@@ -273,6 +273,7 @@ class InspectionBookingRequestCotroller extends Controller
                     'scheduled_time' => $booking->scheduled_time,
                     'urgent_status' => $booking->urgent_status,
                     'rescheduled_status' => $booking->isRescheduled,
+                    'reschedule' => $reschedule,
                     'status' => $booking->status,
                     'note' => $booking->note,
                     'price' => $payment ? number_format($payment->subtotal, 2) : null,
@@ -300,11 +301,12 @@ class InspectionBookingRequestCotroller extends Controller
     public function inspectionDetails(string $id)
     {
         try {
-            $booking = InspectionBooking::with(['payment', 'inspectionTypes','inspectionAssign'])
+            $booking = InspectionBooking::with(['payment', 'inspectionTypes','inspectionAssign','reschedule'])
                 ->findOrFail($id);
 
             $payment = $booking->payment;
             $assigned = $booking->inspectionAssign;
+            $reschedule = $booking->reschedule;
 
             $response = [
                 'id'                => $booking->id,
@@ -321,6 +323,12 @@ class InspectionBookingRequestCotroller extends Controller
                     'date'          => optional($booking->scheduled_date)->format('Y-m-d'),
                     'time'          => $booking->scheduled_time,
                     'shift'         => $booking->scheduled_shift,
+                ],
+                'reschedule'         => [
+                    'date'          => $reschedule->date ?? null,
+                    'time'          => $reschedule->time ?? null,
+                    'shift'         => $reschedule->shift ?? null,
+                    'status'        => $reschedule->status ?? null,
                 ],
                 'Inspector Assigned' =>[
                     'id'  =>    $assigned->id ?? null,

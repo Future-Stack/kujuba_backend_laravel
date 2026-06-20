@@ -64,6 +64,11 @@ class InspectionBooking extends Model
         return $this->hasMany(DeclineInspection::class);
     }
 
+    public function reschedule()
+    {
+        return $this->hasOne(RescheduleInspection::class);
+    }
+
 
     protected $casts = [
         'booking_date' => 'date',

@@ -260,6 +260,7 @@ Route::prefix('admin/dashboard')->group(function () {
         //Reschedule
         Route::post('/request-reschedule',[RescheduleBookingRequestController::class,'requestReschedule']);
         Route::get('/decline-reschedule/{assign_id}',[RescheduleBookingRequestController::class,'declineRequest']);
+        Route::get('/accept-reschedule/{assign_id}',[RescheduleBookingRequestController::class,'acceptRequest']);
 
     });
 
