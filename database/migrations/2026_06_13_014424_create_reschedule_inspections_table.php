@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('reschedule_inspections', function (Blueprint $table) {
             $table->id();
             $table->foreignId('inspection_assign_id')->nullable()->constrained('inspection_assigns')->onDelete('cascade');
+            $table->foreignId('inspection_booking_id')->nullable()->constrained('inspection_bookings')->onDelete('cascade');
             $table->foreignId('accepted_inspector_id')->nullable()->constrained('users')->onDelete('cascade');
             $table->date('date');
             $table->time('time');

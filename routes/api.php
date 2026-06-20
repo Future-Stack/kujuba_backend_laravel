@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Booking\InspectionBookingRequestCotroller;
+use App\Http\Controllers\Booking\RescheduleBookingRequestController;
 use App\Http\Controllers\Faq\FaqController;
 use App\Http\Controllers\Inspection\InspectionController;
 use App\Http\Controllers\Inspection_Assign\InspectionAssignsController;
@@ -255,6 +256,10 @@ Route::prefix('admin/dashboard')->group(function () {
 
         //Inspection Details
         Route::get('/inspection-details/{id}', [InspectionBookingRequestCotroller::class, 'inspectionDetails']);
+
+        //Reschedule
+        Route::post('/request-reschedule',[RescheduleBookingRequestController::class,'requestReschedule']);
+        Route::get('/decline-reschedule/{assign_id}',[RescheduleBookingRequestController::class,'declineRequest']);
 
     });
 

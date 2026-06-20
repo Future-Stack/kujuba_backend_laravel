@@ -159,6 +159,7 @@ class InspectionController extends Controller
                 $booking = $assign->inspectionBooking;
                 return [
                     'id'                => $assign->id,
+                    'booking_id'        => $booking->id,
                     'inspection_type'   => $booking->inspectionTypes,
                     'property_address'  => $booking->property_address,
                     'property_type'     => $booking->property_type,
