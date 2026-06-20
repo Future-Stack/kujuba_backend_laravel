@@ -6,6 +6,12 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\InspectionReport;
 use Illuminate\Support\Facades\Storage;
+use App\Models\InspectionAssign;
+use App\Models\InspectionPayment;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use Stripe\Stripe;
+use Stripe\Transfer;
 
 class InspectionReportController extends Controller
 {
@@ -472,4 +478,105 @@ class InspectionReportController extends Controller
         })
     ]);
 }
+
+
+
+
+//auto payment after inspection completion
+public function completeInspection($assign_id)
+    {
+        DB::beginTransaction();
+
+        try {
+
+            $inspection = InspectionAssign::with(['inspector.profile'])
+                ->findOrFail($assign_id);
+
+            if ($inspection->status === 'completed') {
+                return response()->json([
+                    'message' => 'Already completed'
+                ]);
+            }
+
+            $payment = InspectionPayment::where('inspection_booking_id', $inspection->inspection_booking_id)
+                ->first();
+
+            if (!$payment) {
+                return response()->json(['message' => 'Payment not found'], 404);
+            }
+
+            // update status
+            $inspection->status = 'completed';
+            $inspection->save();
+
+            // =========================
+            // STRIPE PAYOUT
+            // =========================
+            Stripe::setApiKey(config('services.stripe.secret'));
+
+            $inspector = $inspection->inspector;
+
+            $stripeAccount = $inspector->profile?->stripe_account_id;
+
+            if (!$stripeAccount) {
+                return response()->json([
+                    'message' => 'Stripe account missing for inspector'
+                ], 400);
+            }
+
+            $inspectorAmount = $payment->inspector_share;
+            $adminAmount = $payment->admin_share;
+
+            // transfer to inspector
+            $transfer = Transfer::create([
+                "amount" => intval($inspectorAmount * 100),
+                "currency" => "usd",
+                "destination" => $stripeAccount,
+            ]);
+
+            // update payment
+            $payment->update([
+                'status' => 'payout_sent',
+                'is_disbursed' => true,
+                'stripe_transfer_id' => $transfer->id,
+            ]);
+
+            // admin earning save
+            $admin = User::where('user_type', 'admin')->first();
+            if ($admin) {
+                $admin->increment('earnings', $adminAmount);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Inspection completed & payout sent',
+                'transfer_id' => $transfer->id,
+                'inspector_amount' => $inspectorAmount,
+                'admin_amount' => $adminAmount,
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function cancelInspection($assign_id)
+    {
+        $inspection = InspectionAssign::findOrFail($assign_id);
+
+        $inspection->status = 'cancelled';
+        $inspection->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Inspection cancelled'
+        ]);
+    }
 }

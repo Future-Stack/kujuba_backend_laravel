@@ -25,6 +25,7 @@ use App\Http\Controllers\Admin\AdminInspectionReportController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\InspectorManagementController;
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\StripeController;
 
 
 
@@ -104,6 +105,19 @@ Route::prefix('v1')->group(function () {
     });
 
     //Rehana Mim
+
+    //auto payment
+
+  Route::post('/stripe/connect/{userId}', [StripeController::class, 'createConnectAccount']);
+Route::post('/stripe/onboarding/{userId}', [StripeController::class, 'onboarding']);
+
+Route::get('/stripe/success', [StripeController::class, 'success']);
+Route::get('/stripe/refresh', [StripeController::class, 'refresh']);
+
+// Stripe Webhook Handler
+Route::post('/stripe/webhook', [StripeController::class, 'handleWebhook']);
+
+
         //Inspection report routes
         Route::prefix('inspection-reports')->group(function () {
             //inspector his own report history
