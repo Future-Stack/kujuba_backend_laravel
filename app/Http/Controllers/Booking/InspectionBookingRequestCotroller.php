@@ -241,6 +241,7 @@ class InspectionBookingRequestCotroller extends Controller
                 ->whereDoesntHave('declines', function ($q) use ($user) {
                     $q->where('inspector_id', $user->id);
                 })
+                ->whereDoesntHave('inspectionAssign')
                 ->latest();
 
             // Apply filter logic
