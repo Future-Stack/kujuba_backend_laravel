@@ -96,6 +96,53 @@ class AdminDashboardController extends Controller
                 ->whereMonth('created_at', $now->month)->count()
         );
 
+
+
+        //finance 
+
+        // =========================
+// FINANCE INSIGHTS (DYNAMIC)
+// =========================
+
+            $range = $request->get('range', 'weekly'); 
+            // weekly | monthly | yearly
+
+            // DATE RANGE SET
+            if ($range == 'monthly') {
+                $start = now()->startOfMonth();
+                $end = now()->endOfMonth();
+            } elseif ($range == 'yearly') {
+                $start = now()->startOfYear();
+                $end = now()->endOfYear();
+            } else {
+                $start = now()->startOfWeek();
+                $end = now()->endOfWeek();
+            }
+
+            // METRICS
+            $financeMetrics = [
+                'receive_payment' => InspectionPayment::sum('total'),
+                'payout' => InspectionPayment::sum('platform_fee'),
+            ];
+
+            // CHART DATA
+            $financeChart = InspectionPayment::select(
+                    DB::raw($range == 'monthly' ? 'DATE(created_at) as label' : 'DAYNAME(created_at) as label'),
+                    DB::raw('SUM(total) as receive'),
+                    DB::raw('SUM(platform_fee) as payout')
+                )
+                ->whereBetween('created_at', [$start, $end])
+                ->groupBy('label')
+                ->orderBy('label')
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'label' => $item->label,
+                        'receive' => (float) $item->receive,
+                        'payout' => (float) $item->payout,
+                    ];
+                });
+
         // =========================
         // RECENT USERS
         // =========================
@@ -323,6 +370,9 @@ $requestApprovals = User::where('user_type', 'inspector')
                 'bar_chart' => $barChart,
                 'circle_chart' => $circleChart,
                 'recent_activity' => $recentActivity,
+                 // 🔥 FINANCE INSIGHTS (ADD THIS)
+                'finance_metrics' => $financeMetrics,
+                'finance_chart' => $financeChart,
             ]
         ]);
     }
