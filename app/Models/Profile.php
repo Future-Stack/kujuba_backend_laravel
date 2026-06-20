@@ -23,4 +23,7 @@ class Profile extends Model
             'inspection_type_id'
         );
     }
+
+
+    
 }
