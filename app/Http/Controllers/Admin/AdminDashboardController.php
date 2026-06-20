@@ -245,20 +245,47 @@ $requestApprovals = User::where('user_type', 'inspector')
         // =========================
         // TOP INSPECTION TYPES
         // =========================
-        $topInspectionTypes = DB::table('booking_inspection_type as pivot')
-            ->join('inspection_types as t', 't.id', '=', 'pivot.inspection_type_id')
-            ->select('t.id','t.title','t.img', DB::raw('COUNT(*) as total_bookings'))
-            ->groupBy('t.id','t.title','t.img')
-            ->orderByDesc('total_bookings')
-            ->limit(6)
-            ->get()
-            ->map(fn($item) => [
-                'id' => $item->id,
-                'title' => $item->title,
-                'image' => $item->img ? asset('storage/'.$item->img) : null,
-                'total_bookings' => $item->total_bookings,
-            ]);
+        $totalBookings = DB::table('booking_inspection_type')->count();
 
+// =========================
+// TOP INSPECTION TYPES
+// =========================
+$topInspectionTypes = DB::table('booking_inspection_type as pivot')
+    ->join('inspection_types as t', 't.id', '=', 'pivot.inspection_type_id')
+    ->select(
+        't.id',
+        't.title',
+        't.img',
+        DB::raw('COUNT(*) as total_bookings')
+    )
+    ->groupBy('t.id', 't.title', 't.img')
+    ->orderByDesc('total_bookings')
+    ->limit(6)
+    ->get()
+    ->map(function ($item) use ($totalBookings) {
+
+        return [
+            'id' => $item->id,
+
+            // 🔥 short code (FP, RI etc)
+            'short_name' => collect(explode(' ', $item->title))
+                ->map(fn($w) => strtoupper(substr($w, 0, 1)))
+                ->implode(''),
+
+            'title' => $item->title,
+
+            'image' => $item->img
+                ? asset('storage/' . $item->img)
+                : null,
+
+            'total_bookings' => (int) $item->total_bookings,
+
+            // 🔥 demand rate %
+            'demand_rate' => $totalBookings > 0
+                ? round(($item->total_bookings / $totalBookings) * 100) . '%'
+                : '0%',
+        ];
+    });
         // =========================
         // RECENT INSPECTIONS (FIXED)
         // =========================
