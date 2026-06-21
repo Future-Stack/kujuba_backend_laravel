@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Jobs;
 
 use App\Models\InspectionAssign;
@@ -27,21 +28,24 @@ class ProcessInspectorPayout implements ShouldQueue
             'inspectionBooking.payment'
         ])->find($this->assignId);
 
-        if (!$assign) return;
-
-        $payment = $assign->inspectionBooking?->payment;
-
-        if (!$payment) return;
-
-        // refresh latest DB state
-        $payment->refresh();
-
-        // already processed guard
-        if ($payment->payout_status !== 'processing') {
+        if (!$assign) {
+            Log::warning("Assign not found: {$this->assignId}");
             return;
         }
 
-        if (!empty($payment->stripe_id)) {
+        $payment = $assign->inspectionBooking?->payment;
+
+        if (!$payment) {
+            Log::warning("Payment not found: {$assign->id}");
+            return;
+        }
+
+        // already done
+        if ($payment->status === 'paid') return;
+
+        // must be processing only
+        if ($payment->status !== 'processing') {
+            Log::info("Payment not processing: {$payment->id}");
             return;
         }
 
@@ -50,40 +54,51 @@ class ProcessInspectorPayout implements ShouldQueue
         if (
             !$inspector ||
             !$inspector->profile ||
-            !$inspector->profile->stripe_onboarding_completed
+            !$inspector->profile->stripe_account_id
         ) {
+            Log::warning("Missing Stripe account: {$assign->inspector_id}");
+
             $payment->update([
-                'payout_status' => 'failed'
+                'status' => 'pending'
             ]);
+
             return;
         }
 
         try {
             $stripe = new StripeClient(config('services.stripe.secret'));
 
-            $amount = (int) ($payment->total * 100);
-            $inspectorAmount = (int) ($amount * 0.80);
+            // inspector gets ONLY inspector_share
+            $amount = (int) round($payment->inspector_share * 100);
+
+            if ($amount <= 0) {
+                Log::warning("Invalid amount: {$payment->id}");
+                return;
+            }
 
             $transfer = $stripe->transfers->create([
-                'amount'      => $inspectorAmount,
+                'amount'      => $amount,
                 'currency'    => 'usd',
                 'destination' => $inspector->profile->stripe_account_id,
-                'description' => 'Inspection #' . $assign->id,
+                'description' => 'Inspection Payout #' . $assign->id,
             ]);
 
+            // SUCCESS
             $payment->update([
-                'payout_status' => 'paid',
-                'stripe_id'     => $transfer->id,
-                'is_disbursed'  => true,
+                'status'       => 'paid',
+                'stripe_id'    => $transfer->id,
+                'trx_id'       => $transfer->id,
             ]);
+
+            Log::info("Payout success: {$payment->id}");
 
         } catch (\Exception $e) {
 
-            $payment->update([
-                'payout_status' => 'failed'
-            ]);
+            Log::error("Payout failed: " . $e->getMessage());
 
-            Log::error('Payout failed: ' . $e->getMessage());
+            $payment->update([
+                'status' => 'failed'
+            ]);
         }
     }
 }

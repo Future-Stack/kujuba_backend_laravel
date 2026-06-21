@@ -28,6 +28,7 @@ use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\InspectorManagementController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\StripeController;
+use App\Http\Controllers\InspectorPaymentHistoryController;
 
 
 
@@ -110,16 +111,23 @@ Route::prefix('v1')->group(function () {
 
     //auto payment
 
-  Route::post('/stripe/connect/{userId}', [StripeController::class, 'createConnectAccount']);
-Route::post('/stripe/onboarding/{userId}', [StripeController::class, 'onboarding']);
+        Route::post('/stripe/connect/{userId}', [StripeController::class, 'createConnectAccount']);
+        Route::post('/stripe/onboarding/{userId}', [StripeController::class, 'onboarding']);
 
-Route::get('/stripe/success', [StripeController::class, 'success']);
-Route::get('/stripe/refresh', [StripeController::class, 'refresh']);
+        Route::get('/stripe/success', [StripeController::class, 'success']);
+        Route::get('/stripe/refresh', [StripeController::class, 'refresh']);
 
-// Stripe Webhook Handler
-Route::post('/stripe/webhook', [StripeController::class, 'handleWebhook']);
+        // Stripe Webhook Handler
+        Route::post('/stripe/webhook', [StripeController::class, 'handleWebhook']);
 
 
+
+//Inspector payment history route 
+        Route::prefix('inspector')->middleware('auth:sanctum')->group(function () {
+            Route::get('/earnings/overview', [InspectorPaymentHistoryController::class, 'overview']);
+            Route::get('/payouts', [InspectorPaymentHistoryController::class, 'index']);
+            Route::get('/payout/{id}', [InspectorPaymentHistoryController::class, 'show']);
+        });
         //Inspection report routes
         Route::prefix('inspection-reports')->group(function () {
             //inspector his own report history

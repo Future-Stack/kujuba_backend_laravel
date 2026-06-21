@@ -5,8 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Profile;
 use Illuminate\Http\Request;
-use Stripe\StripeClient;
 use Illuminate\Support\Facades\Log;
+use Stripe\StripeClient;
+use Stripe\Webhook;
 
 class StripeController extends Controller
 {
@@ -26,6 +27,16 @@ class StripeController extends Controller
     {
         $user = User::with('profile')->findOrFail($userId);
 
+        // prevent duplicate account creation
+        if ($user->profile?->stripe_account_id) {
+            return response()->json([
+                'success' => true,
+                'account_id' => $user->profile->stripe_account_id,
+                'stripe_onboarding_completed' => (int) $user->profile->stripe_onboarding_completed,
+                'message' => 'Already exists'
+            ]);
+        }
+
         $account = $this->stripe->accounts->create([
             'type' => 'express',
             'country' => 'US',
@@ -35,14 +46,18 @@ class StripeController extends Controller
             ],
         ]);
 
-        $user->profile()->update([
-            'stripe_account_id' => $account->id,
-            'stripe_onboarding_completed' => 0,
-        ]);
+        $user->profile()->updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'stripe_account_id' => $account->id,
+                'stripe_onboarding_completed' => 0,
+            ]
+        );
 
         return response()->json([
             'success' => true,
             'account_id' => $account->id,
+            'stripe_onboarding_completed' => 0,
         ]);
     }
 
@@ -55,7 +70,7 @@ class StripeController extends Controller
     {
         $user = User::with('profile')->findOrFail($userId);
 
-        if (!$user->profile || !$user->profile->stripe_account_id) {
+        if (!$user->profile?->stripe_account_id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Stripe account not found'
@@ -77,97 +92,112 @@ class StripeController extends Controller
 
     /**
      * =========================
-     * SUCCESS CALLBACK
+     * SUCCESS
      * =========================
      */
     public function success()
     {
         return response()->json([
             'success' => true,
-            'message' => 'Onboarding completed. Waiting for Stripe verification.'
+            'message' => 'Returned from onboarding. Waiting for Stripe verification.'
         ]);
     }
 
-   public function handleWebhook(Request $request)
+    /**
+     * =========================
+     * STRIPE WEBHOOK (FINAL FIXED)
+     * =========================
+     */
+    public function handleWebhook(Request $request)
 {
     $payload   = $request->getContent();
     $sigHeader = $request->header('Stripe-Signature');
     $secret    = config('services.stripe.payout_webhook_secret');
 
-    Log::info('🔥 Stripe Webhook HIT');
+    Log::info("🔥 Stripe Webhook HIT");
 
     try {
-        $event = Webhook::constructEvent(
+        $event = \Stripe\Webhook::constructEvent(
             $payload,
             $sigHeader,
             $secret
         );
     } catch (\Exception $e) {
-        Log::error('❌ Stripe Signature Error: ' . $e->getMessage());
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Invalid signature'
-        ], 400);
+        Log::error("❌ Stripe Signature Error: " . $e->getMessage());
+        return response()->json(['error' => 'Invalid signature'], 400);
     }
 
-    Log::info('📩 Event Type: ' . $event->type);
+    Log::info("📩 Event Type: " . $event->type);
 
-    /**
-     * ==================================
-     * HANDLE ACCOUNT / CAPABILITY UPDATE
-     * ==================================
-     */
-    if (in_array($event->type, ['account.updated', 'capability.updated'])) {
-
-        $account = $event->data->object;
-
-        Log::info('📦 Stripe Account Event', [
-            'account_id' => $account->id,
-            'charges_enabled' => $account->charges_enabled ?? null,
-            'payouts_enabled' => $account->payouts_enabled ?? null,
-        ]);
-
-        $profile = Profile::where('stripe_account_id', $account->id)->first();
-
-        if (!$profile) {
-            Log::error('❌ Profile not found for Stripe account: ' . $account->id);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Profile not found'
-            ], 404);
-        }
-
-        /**
-         * =========================
-         * ONBOARDING SUCCESS CHECK
-         * =========================
-         */
-        $chargesEnabled = (bool) ($account->charges_enabled ?? false);
-        $payoutsEnabled = (bool) ($account->payouts_enabled ?? false);
-
-        if ($chargesEnabled && $payoutsEnabled) {
-
-            if (!$profile->stripe_onboarding_completed) {
-
-                $profile->update([
-                    'stripe_onboarding_completed' => 1
-                ]);
-
-                Log::info('🎉 ONBOARDING COMPLETED', [
-                    'profile_id' => $profile->id
-                ]);
-            }
-
-        } else {
-            Log::info('⏳ Stripe account NOT fully ready yet');
-        }
+    // Only needed events
+    if (!in_array($event->type, ['account.updated', 'capability.updated'])) {
+        return response()->json(['ok' => true]);
     }
 
-    return response()->json([
-        'success' => true,
-        'message' => 'Webhook processed successfully'
-    ]);
+    $object = $event->data->object;
+
+    // SAFE ACCOUNT ID
+    $accountId = $object->id ?? null;
+
+    if (!$accountId) {
+        Log::warning("⚠️ Missing account ID");
+        return response()->json(['ok' => true]);
+    }
+
+    // Find profile
+    $profile = \App\Models\Profile::where('stripe_account_id', $accountId)->first();
+
+    if (!$profile) {
+        Log::warning("❌ Profile not found: {$accountId}");
+        return response()->json(['ok' => true]);
+    }
+
+    // =========================
+    // 🔥 IMPORTANT FIX: REFRESH ACCOUNT FROM STRIPE
+    // =========================
+    try {
+        $stripe = new \Stripe\StripeClient(config('services.stripe.secret'));
+
+        $account = $stripe->accounts->retrieve($accountId, []);
+
+    } catch (\Exception $e) {
+        Log::error("❌ Stripe retrieve error: " . $e->getMessage());
+        return response()->json(['ok' => true]);
+    }
+
+    // REAL VALUES FROM STRIPE
+    $chargesEnabled = (bool) $account->charges_enabled;
+    $payoutsEnabled = (bool) $account->payouts_enabled;
+
+    Log::info("charges_enabled: " . json_encode($chargesEnabled));
+    Log::info("payouts_enabled: " . json_encode($payoutsEnabled));
+
+    // =========================
+    // FINAL ONBOARDING LOGIC
+    // =========================
+    if ($chargesEnabled && $payoutsEnabled) {
+
+        if ((int) $profile->stripe_onboarding_completed !== 1) {
+
+            $profile->update([
+                'stripe_onboarding_completed' => 1
+            ]);
+
+            Log::info("🎉 ONBOARDING COMPLETED: Profile ID {$profile->id}");
+        }
+
+    } else {
+
+        // keep safe state
+        if ($profile->stripe_onboarding_completed != 0) {
+            $profile->update([
+                'stripe_onboarding_completed' => 0
+            ]);
+        }
+
+        Log::info("⏳ Stripe onboarding NOT completed yet");
+    }
+
+    return response()->json(['success' => true]);
 }
 }
