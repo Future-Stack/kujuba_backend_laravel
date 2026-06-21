@@ -31,6 +31,12 @@ return new class extends Migration
             $table->decimal('penalty_amount', 10, 2)->nullable();
             $table->decimal('refunded_amount', 10, 2)->nullable();
             $table->decimal('paycut_amount', 10, 2)->nullable(); // new field
+            $table->enum('payout_status', [
+                                        'pending',
+                                        'processing',
+                                        'paid',
+                                        'failed'
+                                    ])->default('pending');
             $table->timestamps();
         });
     }

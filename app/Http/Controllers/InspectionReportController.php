@@ -18,24 +18,45 @@ class InspectionReportController extends Controller
     /**
      * START INSPECTION
      */
-    public function start($id)
-    {
-        $report = InspectionReport::firstOrCreate(
-            ['inspection_assign_id' => $id]
-        );
+ public function start($id)
+{
+    // 1. check assign exists
+    $assign = \App\Models\InspectionAssign::find($id);
 
-        $report->update([
-            'status' => 'started',
-            'started_at' => $report->started_at ?? now()
-        ]);
-
+    if (!$assign) {
         return response()->json([
-            'success' => true,
-            'message' => 'Inspection started',
-            'data' => $this->formatReport($report)
-        ]);
+            'success' => false,
+            'message' => 'Inspection assign not found'
+        ], 404);
     }
 
+    // 2. get or create report
+    $report = InspectionReport::firstOrCreate(
+        ['inspection_assign_id' => $id],
+        ['status' => 'pending']
+    );
+
+    // 3. already started check
+    if ($report->started_at) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Inspection already started'
+        ], 400);
+    }
+
+    // 4. update report
+    $report->update([
+        'status' => 'started',
+        'started_at' => now(),
+        'expires_at' => now()->addHours(48)
+    ]);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Inspection started',
+        'data' => $this->formatReport($report)
+    ]);
+}
     /**
      * SHOW REPORT
      */
@@ -67,113 +88,120 @@ class InspectionReportController extends Controller
      * SAVE REPORT
      */
     public function save(Request $request, $id)
-    {
-        $report = InspectionReport::firstOrCreate(
-            ['inspection_assign_id' => $id]
-        );
+{
+    $request->validate([
+        'notes' => 'nullable|string',
+        'photos.*' => 'image|mimes:jpg,jpeg,png|max:5120',
+        'videos.*' => 'mimes:mp4,mov,avi|max:51200',
+        'report_file' => 'nullable|file|mimes:pdf,jpg,png|max:10240',
+    ]);
 
-        if (in_array($report->status, ['completed', 'cancelled'])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Report is locked'
-            ], 403);
-        }
+    $report = InspectionReport::firstOrCreate([
+        'inspection_assign_id' => $id
+    ]);
 
-        // NOTES
-        if ($request->filled('notes')) {
-            $report->notes = $request->notes;
-        }
-
-        // MEDIA
-        if ($request->hasFile('photos') || $request->hasFile('videos')) {
-
-            $media = $report->media ?? ['photos' => [], 'videos' => []];
-
-            if ($request->hasFile('photos')) {
-                foreach ($request->file('photos') as $photo) {
-                    $media['photos'][] = $photo->store('inspection/photos', 'public');
-                }
-            }
-
-            if ($request->hasFile('videos')) {
-                foreach ($request->file('videos') as $video) {
-                    $media['videos'][] = $video->store('inspection/videos', 'public');
-                }
-            }
-
-            $report->media = $media;
-        }
-
-        // REPORT FILE
-        if ($request->hasFile('report_file')) {
-
-            if ($report->report_file) {
-                Storage::disk('public')->delete($report->report_file);
-            }
-
-            $report->report_file = $request->file('report_file')
-                ->store('inspection/reports', 'public');
-        }
-
-        $report->save();
-
+    if (in_array($report->status, ['completed', 'cancelled'])) {
         return response()->json([
-            'success' => true,
-            'message' => 'Saved successfully',
-            'data' => $this->formatReport($report)
-        ]);
+            'success' => false,
+            'message' => 'Report is locked'
+        ], 403);
     }
+
+    if ($request->filled('notes')) {
+        $report->notes = $request->notes;
+    }
+
+    $media = $report->media ?? ['photos' => [], 'videos' => []];
+
+    if ($request->hasFile('photos')) {
+        foreach ($request->file('photos') as $photo) {
+            $media['photos'][] = $photo->store('inspection/photos', 'public');
+        }
+    }
+
+    if ($request->hasFile('videos')) {
+        foreach ($request->file('videos') as $video) {
+            $media['videos'][] = $video->store('inspection/videos', 'public');
+        }
+    }
+
+    $report->media = $media;
+
+    if ($request->hasFile('report_file')) {
+        if ($report->report_file) {
+            Storage::disk('public')->delete($report->report_file);
+        }
+
+        $report->report_file = $request->file('report_file')
+            ->store('inspection/reports', 'public');
+    }
+
+    $report->save();
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Saved successfully',
+        'data' => $this->formatReport($report)
+    ]);
+}
 
     /**
      * FINAL SUBMIT
      */
-    public function submit($id)
-    {
-        $report = InspectionReport::firstOrCreate(
-            ['inspection_assign_id' => $id]
-        );
+   public function submit($id)
+{
+    $report = InspectionReport::firstOrCreate([
+        'inspection_assign_id' => $id
+    ]);
 
-        if ($report->started_at && now()->greaterThan($report->started_at->copy()->addHours(48))) {
-            return response()->json([
-                'success' => false,
-                'message' => '48 hours expired'
-            ], 403);
-        }
-
-        if (empty($report->notes)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Notes is required'
-            ], 400);
-        }
-
-        $media = $report->media ?? [];
-        if (empty($media['photos']) && empty($media['videos'])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'At least one photo or video is required'
-            ], 400);
-        }
-
-        if (empty($report->report_file)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Report file is required'
-            ], 400);
-        }
-
-        $report->update([
-            'status' => 'completed',
-            'completed_at' => now()
-        ]);
-
+    if ($report->status === 'completed') {
         return response()->json([
             'success' => true,
-            'message' => 'Inspection completed successfully',
-            'data' => $this->formatReport($report)
-        ]);
+            'message' => 'completed'
+        ], 400);
     }
 
+    if ($report->expires_at && now()->greaterThan($report->expires_at)) {
+        return response()->json([
+            'success' => false,
+            'message' => '48 hours expired'
+        ], 403);
+    }
+
+    if (empty($report->notes)) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Notes is required'
+        ], 400);
+    }
+
+    $media = $report->media ?? [];
+
+    if (empty($media['photos']) && empty($media['videos'])) {
+        return response()->json([
+            'success' => false,
+            'message' => 'At least one photo or video is required'
+        ], 400);
+    }
+
+    if (empty($report->report_file)) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Report file is required'
+        ], 400);
+    }
+
+    $report->update([
+        'status' => 'completed',
+        'completed_at' => now()
+    ]);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Inspection completed successfully',
+        'data' => $this->formatReport($report)
+    ]);
+}
     /**
      * CANCEL
      */
@@ -206,31 +234,34 @@ class InspectionReportController extends Controller
      * FORMAT
      */
     private function formatReport($report)
-    {
-        return [
-            'id' => $report->id,
-            'inspection_assign_id' => $report->inspection_assign_id,
-            'notes' => $report->notes,
-            'homeowner_feedback' => $report->homeowner_feedback ?? null,
+{
+    $media = $report->media ?? ['photos' => [], 'videos' => []];
 
-            'media' => [
-                'photos' => collect($report->media['photos'] ?? [])
-                    ->map(fn ($p) => asset('storage/' . $p))->values(),
+    return [
+        'id' => $report->id,
+        'inspection_assign_id' => $report->inspection_assign_id,
+        'notes' => $report->notes,
+        'homeowner_feedback' => $report->homeowner_feedback ?? null,
 
-                'videos' => collect($report->media['videos'] ?? [])
-                    ->map(fn ($v) => asset('storage/' . $v))->values(),
-            ],
+        'media' => [
+            'photos' => collect($media['photos'])
+                ->map(fn ($p) => asset('storage/' . $p))->values(),
 
-            'report_file' => $report->report_file
-                ? asset('storage/' . $report->report_file)
-                : null,
+            'videos' => collect($media['videos'])
+                ->map(fn ($v) => asset('storage/' . $v))->values(),
+        ],
 
-            'status' => $report->status,
-            'started_at' => $report->started_at,
-            'completed_at' => $report->completed_at,
-            'cancelled_at' => $report->cancelled_at,
-        ];
-    }
+        'report_file' => $report->report_file
+            ? asset('storage/' . $report->report_file)
+            : null,
+
+        'status' => $report->status,
+        'started_at' => $report->started_at,
+        'completed_at' => $report->completed_at,
+        'cancelled_at' => $report->cancelled_at,
+        'expires_at' => $report->expires_at,
+    ];
+}
 
     /**
      * HOMEOWNER REPORT
@@ -482,101 +513,93 @@ class InspectionReportController extends Controller
 
 
 
-//auto payment after inspection completion
-public function completeInspection($assign_id)
-    {
-        DB::beginTransaction();
+// public function completeInspection($assign_id)
+// {
+//         try {
 
-        try {
 
-            $inspection = InspectionAssign::with(['inspector.profile'])
-                ->findOrFail($assign_id);
+//             $inspection = Inspection::with([
+//                 'inspector.profile'
+//             ])->findOrFail($assign_id);
 
-            if ($inspection->status === 'completed') {
-                return response()->json([
-                    'message' => 'Already completed'
-                ]);
-            }
+//             $inspector = $inspection->inspector;
 
-            $payment = InspectionPayment::where('inspection_booking_id', $inspection->inspection_booking_id)
-                ->first();
+//             // Inspector onboarding check
+//             if (
+//                 !$inspector ||
+//                 !$inspector->profile ||
+//                 !$inspector->profile->stripe_onboarding_completed
+//             ) {
+//                 throw new \Exception(
+//                     'Inspector onboarding not completed.'
+//                 );
+//             }
 
-            if (!$payment) {
-                return response()->json(['message' => 'Payment not found'], 404);
-            }
+//             // Prevent duplicate payment
+//             if ($inspection->payment_status === 'paid') {
+//                 throw new \Exception(
+//                     'Inspector payment already released.'
+//                 );
+//             }
 
-            // update status
-            $inspection->status = 'completed';
-            $inspection->save();
+//             $stripe = new \Stripe\StripeClient(
+//                 config('services.stripe.secret')
+//             );
 
-            // =========================
-            // STRIPE PAYOUT
-            // =========================
-            Stripe::setApiKey(config('services.stripe.secret'));
+//             // Inspection amount (USD -> cents)
+//             $amount = (int) ($inspection->amount * 100);
 
-            $inspector = $inspection->inspector;
+//             // Inspector gets 80%
+//             $inspectorAmount = (int) ($amount * 0.80);
 
-            $stripeAccount = $inspector->profile?->stripe_account_id;
+//             $transfer = $stripe->transfers->create([
+//                 'amount'      => $inspectorAmount,
+//                 'currency'    => 'usd',
+//                 'destination' => $inspector->profile->stripe_account_id,
+//                 'description' => 'Inspection #' . $inspection->id,
+//             ]);
 
-            if (!$stripeAccount) {
-                return response()->json([
-                    'message' => 'Stripe account missing for inspector'
-                ], 400);
-            }
+//             // Update inspection
+//             $inspection->update([
+//                 'status'             => 'completed',
+//                 'payment_status'     => 'paid',
+//                 'stripe_transfer_id' => $transfer->id,
+//                 'paid_at'            => now(),
+//             ]);
 
-            $inspectorAmount = $payment->inspector_share;
-            $adminAmount = $payment->admin_share;
+//             return response()->json([
+//                 'success'     => true,
+//                 'message'     => 'Inspection completed and payment transferred successfully.',
+//                 'transfer_id' => $transfer->id,
+//             ]);
 
-            // transfer to inspector
-            $transfer = Transfer::create([
-                "amount" => intval($inspectorAmount * 100),
-                "currency" => "usd",
-                "destination" => $stripeAccount,
-            ]);
+//         } catch (\Exception $e) {
 
-            // update payment
-            $payment->update([
-                'status' => 'payout_sent',
-                'is_disbursed' => true,
-                'stripe_transfer_id' => $transfer->id,
-            ]);
+//             \Log::error(
+//                 'Stripe Transfer Error: ' . $e->getMessage()
+//             );
 
-            // admin earning save
-            $admin = User::where('user_type', 'admin')->first();
-            if ($admin) {
-                $admin->increment('earnings', $adminAmount);
-            }
+//             return response()->json([
+//                 'success' => false,
+//                 'message' => $e->getMessage(),
+//             ], 422);
+//         }
 
-            DB::commit();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Inspection completed & payout sent',
-                'transfer_id' => $transfer->id,
-                'inspector_amount' => $inspectorAmount,
-                'admin_amount' => $adminAmount,
-            ]);
+// }
 
-        } catch (\Exception $e) {
-            DB::rollBack();
 
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
-        }
-    }
 
-    public function cancelInspection($assign_id)
-    {
-        $inspection = InspectionAssign::findOrFail($assign_id);
+    // public function cancelInspection($assign_id)
+    // {
+    //     $inspection = InspectionAssign::findOrFail($assign_id);
 
-        $inspection->status = 'cancelled';
-        $inspection->save();
+    //     $inspection->status = 'cancelled';
+    //     $inspection->save();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Inspection cancelled'
-        ]);
-    }
+    //     return response()->json([
+    //         'success' => true,
+    //         'message' => 'Inspection cancelled'
+    //     ]);
+    // }
 }
