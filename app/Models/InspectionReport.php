@@ -32,13 +32,16 @@ class InspectionReport extends Model
         'expires_at' => 'datetime',
     ];
 
+
+
+  
     /**
      * Relation: inspection assign
      */
-    public function inspectionAssign()
-    {
-        return $this->belongsTo(InspectionAssign::class);
-    }
+      public function inspectionAssign()
+{
+    return $this->belongsTo(InspectionAssign::class, 'inspection_assign_id');
+}
 
     /**
      * Check if editable (within 48 hours)

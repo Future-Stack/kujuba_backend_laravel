@@ -188,7 +188,7 @@ class AdminDashboardController extends Controller
             ->get()
             ->map(function ($user) {
 
-                $earnings = InspectionPayment::where('payout_status', 'paid')
+                $earnings = InspectionPayment::where('status', 'paid')
                 ->whereHas('inspectionBooking.inspectionAssign', function ($q) use ($user) {
                     $q->where('inspector_id', $user->id)
                     ->where('status', 'completed');

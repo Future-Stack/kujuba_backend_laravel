@@ -36,4 +36,11 @@ class InspectionAssign extends Model
     {
         return $this->hasOne(Review::class);
     }
+
+  
+
+    public function payment()
+{
+    return $this->belongsTo(InspectionPayment::class, 'inspection_booking_id', 'inspection_booking_id');
+}
 }
