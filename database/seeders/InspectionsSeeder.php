@@ -31,7 +31,7 @@ class InspectionsSeeder extends Seeder
                 'scheduled_time'  => '10:00:00',
                 'scheduled_shift' => 'morning',
                 'urgent_status'   => true,
-                'status'          => 'pending',
+                'status'          => 'active',
                 'latitude'        => 25.7617,
                 'longitude'       => -80.1918,
                 'isRescheduled'   => 0,

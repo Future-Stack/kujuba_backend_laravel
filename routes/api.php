@@ -3,6 +3,7 @@
 use App\Http\Controllers\Booking\InspectionBookingRequestCotroller;
 use App\Http\Controllers\Booking\RescheduleBookingRequestController;
 use App\Http\Controllers\Faq\FaqController;
+use App\Http\Controllers\Inspection\AdminInspectionController;
 use App\Http\Controllers\Inspection\InspectionController;
 use App\Http\Controllers\Inspection_Assign\InspectionAssignsController;
 use App\Http\Controllers\InspectionBookingController;
@@ -265,6 +266,14 @@ Route::prefix('admin/dashboard')->group(function () {
         //Cancel Booking
         Route::get('/cancel-booking/{booking_id}',[InspectionBookingRequestCotroller::class,'cancelBookingInspection']);
 
+        //Inspections (Admin)
+        Route::get('/admin/inspection-metrics',[AdminInspectionController::class, 'inspectionMetrics']);
+        Route::get('/admin/inspection-management',[AdminInspectionController::class, 'inspectionManagement']);
+        Route::get('/admin/available-inspectors',[AdminInspectionController::class, 'availableInspectors']);
+        Route::get('/admin/export-inspections-data', [AdminInspectionController::class, 'exportInspectionData']);
+        Route::get('/admin/booking-details/{id}',[AdminInspectionController::class, 'bookingDetails']);
+        Route::get('/admin/suspend-inspector/{id}',[AdminInspectionController::class, 'suspendInspector']);
+        Route::get('/admin/mark-inspection-complete/{id}',[AdminInspectionController::class, 'markInspectionComplete']);
     });
 
     //Booking Request Webhook Payment

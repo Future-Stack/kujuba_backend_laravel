@@ -31,6 +31,18 @@ class InspectionBooking extends Model
         return $this->hasOne(InspectionPayment::class, 'inspection_booking_id');
     }
 
+    public function inspectionFeePayment()
+    {
+        return $this->hasOne(InspectionPayment::class, 'inspection_booking_id')
+            ->where('payment_type', 'inspection_fee');
+    }
+
+    // Multiple payments per booking
+    public function payments()
+    {
+        return $this->hasMany(InspectionPayment::class, 'inspection_booking_id');
+    }
+
     /**
      * 👤 HOMEOWNER relation (FIXED)
      */
@@ -68,6 +80,14 @@ class InspectionBooking extends Model
     {
         return $this->hasOne(RescheduleInspection::class);
     }
+
+    public function homeowner()
+    {
+        return $this->belongsTo(User::class, 'homeowner_id');
+    }
+
+    // Media files (images, attachments)
+
 
 
     protected $casts = [
