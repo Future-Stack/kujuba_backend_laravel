@@ -11,6 +11,7 @@ use App\Http\Controllers\Inspecttion_Decline\InspectionDeclinesController;
 use App\Http\Controllers\Notification\NotificationController;
 use App\Http\Controllers\Notification\NotificationPreferenceController;
 use App\Http\Controllers\Page\PageController;
+use App\Http\Controllers\Payment\AdminPaymentController;
 use App\Http\Controllers\Reviews\HomeownerReviewsController;
 use App\Http\Controllers\Reviews\InspectorReviewsController;
 use App\Http\Controllers\Reviews\ReviewsController;
@@ -288,6 +289,12 @@ Route::prefix('admin/dashboard')->group(function () {
         Route::get('/admin/booking-details/{id}',[AdminInspectionController::class, 'bookingDetails']);
         Route::get('/admin/suspend-inspector/{id}',[AdminInspectionController::class, 'suspendInspector']);
         Route::get('/admin/mark-inspection-complete/{id}',[AdminInspectionController::class, 'markInspectionComplete']);
+
+        //Payment (Admin)
+        Route::get('/admin/payment-matrics',[AdminPaymentController::class, 'paymentMetrics']);
+        Route::get('/admin/payment-list',[AdminPaymentController::class, 'index']);
+        Route::get('/admin/export-payments-data', [AdminPaymentController::class, 'exportPaymentData']);
+        Route::get('/admin/export-single-payments-data/{id}', [AdminPaymentController::class, 'exportSinglePayment']);
     });
 
     //Booking Request Webhook Payment

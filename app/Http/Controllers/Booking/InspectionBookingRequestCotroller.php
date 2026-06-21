@@ -100,6 +100,7 @@ class InspectionBookingRequestCotroller extends Controller
 
             $payment = InspectionPayment::create([
                 'inspection_booking_id' => $booking->id,
+
                 'subtotal' => $subtotal,
                 'platform_fee' => $platformFee,
                 'inspector_share' => $inspector_share,
