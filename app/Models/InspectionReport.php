@@ -20,6 +20,7 @@ class InspectionReport extends Model
         'started_at',
         'completed_at',
         'cancelled_at',
+        'expires_at',
     ];
 
     protected $casts = [
@@ -28,6 +29,7 @@ class InspectionReport extends Model
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
         'cancelled_at' => 'datetime',
+        'expires_at' => 'datetime',
     ];
 
     /**
@@ -81,41 +83,4 @@ class InspectionReport extends Model
 
 
 
-//     protected static function booted()
-// {
-//     static::updated(function ($report) {
-
-//         // 🔥 only run when status actually changed
-//         if (!$report->wasChanged('status')) {
-//             return;
-//         }
-
-//         // 🔗 relation check
-//         $assign = $report->inspectionAssign;
-
-//         if (!$assign) {
-//             return;
-//         }
-
-//         // 🔥 status mapping (report → assign)
-//         $map = [
-//             'started'   => 'inspection',
-//             'completed' => 'completed',
-//             'cancelled' => 'cancelled',
-//         ];
-
-//         // 🔎 get mapped status
-//         $newStatus = $map[$report->status] ?? null;
-
-//         // ❌ if no mapping found, stop
-//         if (!$newStatus) {
-//             return;
-//         }
-
-//         // 🔄 update assign safely
-//         $assign->update([
-//             'status' => $newStatus
-//         ]);
-//     });
-// }
 }

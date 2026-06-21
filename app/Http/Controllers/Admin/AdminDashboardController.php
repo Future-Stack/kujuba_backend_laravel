@@ -21,8 +21,9 @@ class AdminDashboardController extends Controller
         // =========================
         // BASIC STATS
         // =========================
-        $totalRevenue = InspectionPayment::sum('total');
-        $totalUsers = User::count();
+        $totalRevenue = InspectionPayment::where('status', 'paid')
+    ->sum('total');
+        $totalUsers = User::where('user_type', 'homeowner')->count();
         $totalInspectors = User::where('user_type', 'inspector')->count();
 
         $pendingApprovals = User::where('user_type', 'inspector')
@@ -43,8 +44,19 @@ class AdminDashboardController extends Controller
         // GROWTH HELPER USAGE
         // =========================
         $revenueGrowth = $this->growth(
-            InspectionPayment::whereMonth('created_at', $lastMonth->month)->sum('total'),
-            InspectionPayment::whereMonth('created_at', $now->month)->sum('total')
+            InspectionPayment::where('status', 'paid')
+                ->whereBetween('created_at', [
+                    now()->subMonth()->startOfMonth(),
+                    now()->subMonth()->endOfMonth()
+                ])
+                ->sum('total'),
+
+            InspectionPayment::where('status', 'paid')
+                ->whereBetween('created_at', [
+                    now()->startOfMonth(),
+                    now()->endOfMonth()
+                ])
+                ->sum('total')
         );
 
         $userGrowth = $this->growth(
@@ -98,6 +110,9 @@ class AdminDashboardController extends Controller
 
 
 
+      
+
+           
         //finance 
 
         // =========================
@@ -121,16 +136,17 @@ class AdminDashboardController extends Controller
 
             // METRICS
             $financeMetrics = [
-                'receive_payment' => InspectionPayment::sum('total'),
-                'payout' => InspectionPayment::sum('platform_fee'),
+                'receive_payment' => InspectionPayment::where('status', 'paid')->sum('total'),
+                'payout' => InspectionPayment::where('status', 'paid')->sum('inspector_share'),
             ];
 
             // CHART DATA
             $financeChart = InspectionPayment::select(
                     DB::raw($range == 'monthly' ? 'DATE(created_at) as label' : 'DAYNAME(created_at) as label'),
                     DB::raw('SUM(total) as receive'),
-                    DB::raw('SUM(platform_fee) as payout')
+                    DB::raw('SUM(inspector_share) as payout')
                 )
+                ->where('status', 'paid')
                 ->whereBetween('created_at', [$start, $end])
                 ->groupBy('label')
                 ->orderBy('label')
@@ -172,11 +188,12 @@ class AdminDashboardController extends Controller
             ->get()
             ->map(function ($user) {
 
-                $earnings = InspectionPayment::whereHas(
-                    'inspectionBooking.inspectionAssign',
-                    fn($q) => $q->where('inspector_id', $user->id)
-                                ->where('status', 'completed')
-                )->sum(DB::raw('COALESCE(total - platform_fee,0)'));
+                $earnings = InspectionPayment::where('payout_status', 'paid')
+                ->whereHas('inspectionBooking.inspectionAssign', function ($q) use ($user) {
+                    $q->where('inspector_id', $user->id)
+                    ->where('status', 'completed');
+                })
+                ->sum('inspector_share');
 
                 return [
                     'id' => $user->id,
