@@ -3,6 +3,7 @@
 use App\Http\Controllers\Booking\InspectionBookingRequestCotroller;
 use App\Http\Controllers\Booking\RescheduleBookingRequestController;
 use App\Http\Controllers\Faq\FaqController;
+use App\Http\Controllers\Inspection\AdminInspectionController;
 use App\Http\Controllers\Inspection\InspectionController;
 use App\Http\Controllers\Inspection_Assign\InspectionAssignsController;
 use App\Http\Controllers\InspectionBookingController;
@@ -274,14 +275,26 @@ Route::prefix('admin/dashboard')->group(function () {
         //Reschedule
         Route::post('/request-reschedule',[RescheduleBookingRequestController::class,'requestReschedule']);
         Route::get('/decline-reschedule/{assign_id}',[RescheduleBookingRequestController::class,'declineRequest']);
+        Route::get('/accept-reschedule/{assign_id}',[RescheduleBookingRequestController::class,'acceptRequest']);
 
+        //Cancel Booking
+        Route::get('/cancel-booking/{booking_id}',[InspectionBookingRequestCotroller::class,'cancelBookingInspection']);
+
+        //Inspections (Admin)
+        Route::get('/admin/inspection-metrics',[AdminInspectionController::class, 'inspectionMetrics']);
+        Route::get('/admin/inspection-management',[AdminInspectionController::class, 'inspectionManagement']);
+        Route::get('/admin/available-inspectors',[AdminInspectionController::class, 'availableInspectors']);
+        Route::get('/admin/export-inspections-data', [AdminInspectionController::class, 'exportInspectionData']);
+        Route::get('/admin/booking-details/{id}',[AdminInspectionController::class, 'bookingDetails']);
+        Route::get('/admin/suspend-inspector/{id}',[AdminInspectionController::class, 'suspendInspector']);
+        Route::get('/admin/mark-inspection-complete/{id}',[AdminInspectionController::class, 'markInspectionComplete']);
     });
 
     //Booking Request Webhook Payment
     Route::get('/booking/success', [InspectionBookingRequestCotroller::class, 'BookingSuccess'])->name('booking.success');
     Route::get('/booking/cancel', [InspectionBookingRequestCotroller::class, 'BookingCancel'])->name('booking.cancel');
     Route::post('/booking/webhook-handle', [InspectionBookingRequestCotroller::class, 'handleWebhook'])->name('booking.webhook-handle');
-
+    Route::post('/cancel-booking/webhook-handle', [InspectionBookingRequestCotroller::class, 'cancelHandleWebhook'])->name('cancel-booking.webhook-handle');
 
 
 });

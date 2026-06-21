@@ -20,12 +20,12 @@ class User extends Authenticatable
     protected $fillable = [
         'first_name',
         'last_name',
-        'email', 
+        'email',
         'password',
         'otp',
-        'otp_expire_at', 
+        'otp_expire_at',
         'status',
-        'user_type', 
+        'user_type',
         'device_token',
     ];
 
@@ -48,7 +48,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'otp_expire_at' => 'datetime', 
+            'otp_expire_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -58,7 +58,11 @@ class User extends Authenticatable
         return $this->hasOne(Profile::class, 'user_id');
     }
 
-    
+    public function inspectionAssigns()
+    {
+        return $this->hasMany(InspectionAssign::class, 'inspector_id');
+    }
+
 
     public function inspectionBookings()
     {

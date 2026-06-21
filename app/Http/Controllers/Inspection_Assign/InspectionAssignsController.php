@@ -4,13 +4,17 @@ namespace App\Http\Controllers\Inspection_Assign;
 
 use App\Http\Controllers\Controller;
 use App\Models\InspectionAssign;
+use App\Models\InspectionBooking;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class InspectionAssignsController extends Controller
 {
     public function createOrUpdateInspectionAssign(Request $request)
     {
+        DB::beginTransaction();
+
         try {
             $validated = $request->validate([
                 'inspection_booking_id' => 'required|exists:inspection_bookings,id',
@@ -35,6 +39,7 @@ class InspectionAssignsController extends Controller
                 ], 422);
             }
 
+
             // Create or update record
             $assign = InspectionAssign::updateOrCreate(
                 [
@@ -54,12 +59,20 @@ class InspectionAssignsController extends Controller
                 $assign->save();
             }
 
+            //Update Booking Status as well
+            InspectionBooking::where('id', $validated['inspection_booking_id'])->update([
+                'status'=> 'active'
+            ]);
+
+            DB::commit();
+
             return response()->json([
                 'success' => true,
                 'data'    => $assign
             ], 200);
 
         } catch (\Exception $e) {
+            DB::rollback();
             \Log::error('InspectionAssign createOrUpdate failed: '.$e->getMessage());
             return response()->json([
                 'success' => false,

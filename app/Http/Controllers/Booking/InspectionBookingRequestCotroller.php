@@ -139,7 +139,7 @@ class InspectionBookingRequestCotroller extends Controller
 
             $payment->update([
                 'trx_id' => $paymentIntent->id,
-                'stripe_id' => $paymentIntent->client_secret,
+                'stripe_id' => $paymentIntent->id,
 
             ]);
 
@@ -236,7 +236,7 @@ class InspectionBookingRequestCotroller extends Controller
 
 
             // Base query with relationships
-            $query = InspectionBooking::with(['payment', 'inspectionTypes'])
+            $query = InspectionBooking::with(['payment', 'inspectionTypes','reschedule'])
                 ->whereHas('payment', fn($q) => $q->where('status', 'paid'))
                 ->whereDoesntHave('declines', function ($q) use ($user) {
                     $q->where('inspector_id', $user->id);
@@ -255,7 +255,7 @@ class InspectionBookingRequestCotroller extends Controller
 
             $bookings = $query->get()->map(function ($booking) {
                 $payment = $booking->payment;
-
+                $reschedule = $booking->reschedule ?? null;
                 $type = $booking->inspectionTypes->pluck('title')->toArray();
                 $img =  $booking->inspectionTypes->pluck('img')->toArray();
                 $price  = $booking->inspectionTypes->pluck('price')->toArray();
@@ -273,6 +273,7 @@ class InspectionBookingRequestCotroller extends Controller
                     'scheduled_time' => $booking->scheduled_time,
                     'urgent_status' => $booking->urgent_status,
                     'rescheduled_status' => $booking->isRescheduled,
+                    'reschedule' => $reschedule,
                     'status' => $booking->status,
                     'note' => $booking->note,
                     'price' => $payment ? number_format($payment->subtotal, 2) : null,
@@ -300,11 +301,12 @@ class InspectionBookingRequestCotroller extends Controller
     public function inspectionDetails(string $id)
     {
         try {
-            $booking = InspectionBooking::with(['payment', 'inspectionTypes','inspectionAssign'])
+            $booking = InspectionBooking::with(['payment', 'inspectionTypes','inspectionAssign','reschedule'])
                 ->findOrFail($id);
 
             $payment = $booking->payment;
             $assigned = $booking->inspectionAssign;
+            $reschedule = $booking->reschedule;
 
             $response = [
                 'id'                => $booking->id,
@@ -321,6 +323,12 @@ class InspectionBookingRequestCotroller extends Controller
                     'date'          => optional($booking->scheduled_date)->format('Y-m-d'),
                     'time'          => $booking->scheduled_time,
                     'shift'         => $booking->scheduled_shift,
+                ],
+                'reschedule'         => [
+                    'date'          => $reschedule->date ?? null,
+                    'time'          => $reschedule->time ?? null,
+                    'shift'         => $reschedule->shift ?? null,
+                    'status'        => $reschedule->status ?? null,
                 ],
                 'Inspector Assigned' =>[
                     'id'  =>    $assigned->id ?? null,
@@ -350,6 +358,117 @@ class InspectionBookingRequestCotroller extends Controller
                 'success' => false,
                 'message' => $e->getMessage(),
             ], 500);
+        }
+    }
+
+    public function cancelBookingInspection($booking_id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $booking = InspectionBooking::findOrFail($booking_id);
+            $payment = InspectionPayment::where('inspection_booking_id', $booking_id)->firstOrFail();
+
+            $hours = now()->diffInHours($booking->created_at);
+
+            $cancellationFee = 0;
+            $setting = Setting::first();
+            if ($hours < 2) {
+                $cancellationFee = $setting->last_minute_cancel_penalty ?? 75;
+            } elseif ($hours < 24) {
+                $cancellationFee = $setting->late_cancellation_penalty ?? 50;
+            }
+
+            $admin_share = $cancellationFee/2;
+            $platform_fee = $admin_share;
+            $inspector_share = $cancellationFee/2;
+
+            // Calculate refund amount (total minus fee)
+            $refundAmount = max(($payment->total - $cancellationFee), 0);
+
+            // Trigger Stripe refund
+            $stripe = new \Stripe\StripeClient(config('services.stripe.secret') ?? env('STRIPE_SECRET'));
+
+            $refund = $stripe->refunds->create([
+                'payment_intent' => $payment->stripe_id,
+                'amount'         => $refundAmount * 100, // cents
+            ]);
+
+            // Create New Payment Table
+            InspectionPayment::create([
+                'inspection_booking_id' => $booking->id,
+                'subtotal'              => $refundAmount,
+                'platform_fee'          => $platform_fee,
+                'urgent_fee'            => 0,
+                'inspector_share'       => $inspector_share,
+                'admin_share'           => $admin_share,
+                'total'                 => $refundAmount,
+                'payment_type'          => 'refund',
+                'trx_id'                => $refund->id, // Stripe refund ID
+                'status'                => 'pending',
+                'stripe_id'             => $payment->stripe_id, // original PaymentIntent ID
+                'penalty_amount'        => $cancellationFee,
+                'refunded_amount'       => $refundAmount,
+                'is_disbursed'          => false,
+            ]);
+
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Inspection cancelled. Refund initiated.',
+                'refund'  => $refund,
+                'cancellation_fee' => $cancellationFee,
+                'refunded_amount' => $refundAmount
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to cancel inspection.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function cancelHandleWebhook(Request $request)
+    {
+        $payload = $request->getContent();
+        $sigHeader = $request->header('Stripe-Signature');
+
+        try {
+            $event = \Stripe\Webhook::constructEvent(
+                $payload,
+                $sigHeader,
+                config('services.stripe.webhook_secret')
+            );
+
+            Log::info('event: ' . $event->type);
+
+
+            if ($event->type === 'charge.refunded') {
+                $intent = $event->data->object;
+                $paymentId = $intent->metadata->payment_id ?? null;
+
+                Log::info("Payment ID: " . $paymentId);
+
+                if ($paymentId) {
+                    $payment = InspectionPayment::find($paymentId);
+
+                    if ($payment && $payment->status !== 'paid') {
+                        $payment->update([
+                            'status' => 'paid',
+                        ]);
+                    }
+                }
+            }
+            return response('OK', 200);
+
+        } catch (\Exception $e) {
+            return response('Webhook Error: ' . $e->getMessage(), 400);
         }
     }
 }
