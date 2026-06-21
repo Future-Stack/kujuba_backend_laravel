@@ -92,7 +92,7 @@ class StripeController extends Controller
 {
     $payload   = $request->getContent();
     $sigHeader = $request->header('Stripe-Signature');
-    $secret    = config('services.stripe.webhook_secret');
+    $secret    = config('services.stripe.payout_webhook_secret');
 
     Log::info('🔥 Stripe Webhook HIT');
 
