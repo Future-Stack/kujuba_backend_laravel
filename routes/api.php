@@ -280,7 +280,7 @@ Route::prefix('admin/dashboard')->group(function () {
     Route::get('/booking/success', [InspectionBookingRequestCotroller::class, 'BookingSuccess'])->name('booking.success');
     Route::get('/booking/cancel', [InspectionBookingRequestCotroller::class, 'BookingCancel'])->name('booking.cancel');
     Route::post('/booking/webhook-handle', [InspectionBookingRequestCotroller::class, 'handleWebhook'])->name('booking.webhook-handle');
-    Route::post('/cancel-booking/webhook-handle', [InspectionBookingRequestCotroller::class, 'cancelHandleWebhook'])->name('booking.webhook-handle');
+    Route::post('/cancel-booking/webhook-handle', [InspectionBookingRequestCotroller::class, 'cancelHandleWebhook'])->name('cancel-booking.webhook-handle');
 
 
 });
