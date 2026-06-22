@@ -87,53 +87,53 @@ class InspectorPaymentHistoryController extends Controller
      * Recent Payouts
      */
     public function index()
-    {
-        $userId = auth()->id();
+{
+    $userId = auth()->id();
 
-        $payments = InspectionPayment::with([
-            'inspectionBooking.inspectionAssign',
-            'inspectionBooking.inspectionTypes'
-        ])
-            ->where('status', 'paid')
-            ->where('is_disbursed', true)
-            ->whereHas('inspectionBooking.inspectionAssign', function ($q) use ($userId) {
-                $q->where('inspector_id', $userId);
-            })
-            ->latest()
-            ->get();
+    $payments = InspectionPayment::with([
+        'inspectionBooking.inspectionAssign',
+        'inspectionBooking.inspectionTypes'
+    ])
+        ->where('status', 'paid')
+        ->where('is_disbursed', true)
+        ->whereHas('inspectionBooking.inspectionAssign', function ($q) use ($userId) {
+            $q->where('inspector_id', $userId);
+        })
+        ->latest()
+        ->get();
 
-        $data = $payments->map(function ($payment) {
+    $data = $payments->map(function ($payment) {
 
-            $booking = $payment->inspectionBooking;
-            $assign = $booking?->inspectionAssign;
-            $type = $booking?->inspectionTypes?->first();
+        $booking = $payment->inspectionBooking;
+        $assign  = $booking?->inspectionAssign;
+        $type    = $booking?->inspectionTypes?->first();
 
-            return [
-                'payment_id' => $payment->id,
+        return [
+            'payment_id' => $payment->id,
 
-                'title' => $type?->title ?? 'Inspection',
+            'title' => $type?->title ?? 'Inspection',
 
-                'amount' => (float) $payment->subtotal,
+            // ✅ ADD IMAGE FROM INSPECTION TYPE
+            'image' => $type?->img
+                ? asset('storage/' . $type->img)
+                : null,
 
-                'status' => 'Paid',
+            'amount' => (float) $payment->inspector_share,
 
-                'address' => $booking?->property_address,
+            'status' => 'Paid',
 
-                'completed_at' => optional(
-                    $assign?->updated_at
-                )->format('M d, Y h:i A'),
-            ];
-        });
+            'address' => $booking?->property_address,
 
-        return response()->json([
-            'success' => true,
-            'data' => $data
-        ]);
-    }
+            'completed_at' => optional($assign?->updated_at)
+                ->format('M d, Y h:i A'),
+        ];
+    });
 
-    /**
-     * Single Payout Details
-     */
+    return response()->json([
+        'success' => true,
+        'data' => $data
+    ]);
+}
     public function show($id)
 {
     $userId = auth()->id();
@@ -158,24 +158,29 @@ class InspectorPaymentHistoryController extends Controller
         'success' => true,
         'data' => [
 
-            // Inspection info
             'title' => $type?->title ?? 'Inspection',
+
+            // ✅ IMAGE
+            'image' => $type?->img
+                ? asset('storage/' . $type->img)
+                : null,
+
+            // ✅ STATUS ADDED (same as index style)
+            'status' => ucfirst($payment->status ?? 'pending'),
 
             'payment_received' => true,
 
-            // Customer paid amount
-            'amount' => (float) $payment->total,
+            'amount' => (float) $payment->inspector_share,
 
             'address' => $booking?->property_address,
 
             'completed_at' => optional($assign?->updated_at)
                 ->format('M d, Y h:i A'),
 
-            // Breakdown (IMPORTANT FIX)
             'payment_breakdown' => [
-                'inspection_fee' => (float) $payment->total,          // 669
-                'platform_fee'   => (float) $payment->platform_fee,   // 20
-                'total_payout'   => (float) $payment->inspector_share // 649
+                'inspection_fee' => (float) $payment->total,
+                'platform_fee'   => (float) $payment->platform_fee,
+                'total_payout'   => (float) $payment->inspector_share
             ],
 
             'payment_method' => 'Stripe',
@@ -184,7 +189,6 @@ class InspectorPaymentHistoryController extends Controller
                 ->format('M d, Y h:i A'),
 
             'transaction_id' => $payment->trx_id,
-
             'stripe_transfer_id' => $payment->stripe_id,
         ]
     ]);
