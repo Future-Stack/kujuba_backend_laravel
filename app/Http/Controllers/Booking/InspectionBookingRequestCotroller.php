@@ -200,7 +200,7 @@ class InspectionBookingRequestCotroller extends Controller
             $event = \Stripe\Webhook::constructEvent(
                 $payload,
                 $sigHeader,
-                config('services.stripe.webhook_secret')
+                config('services.stripe.booking_webhook_secret')
             );
 
             Log::info('event: ' . $event->type);
@@ -444,7 +444,7 @@ class InspectionBookingRequestCotroller extends Controller
             $event = \Stripe\Webhook::constructEvent(
                 $payload,
                 $sigHeader,
-                config('services.stripe.webhook_secret')
+                config('services.stripe.cancel_webhook_secret')
             );
 
             Log::info('event: ' . $event->type);
