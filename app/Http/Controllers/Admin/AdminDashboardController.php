@@ -112,52 +112,92 @@ class AdminDashboardController extends Controller
 
       
 
-           
-        //finance 
+         
+$range = $request->get('range', 'weekly');
 
-        // =========================
-// FINANCE INSIGHTS (DYNAMIC)
 // =========================
+// DATE RANGE
+// =========================
+if ($range == 'monthly') {
+    $start = now()->startOfMonth();
+    $end = now()->endOfMonth();
+} elseif ($range == 'yearly') {
+    $start = now()->startOfYear();
+    $end = now()->endOfYear();
+} else {
+    $start = now()->startOfWeek();
+    $end = now()->endOfWeek();
+}
 
-            $range = $request->get('range', 'weekly'); 
-            // weekly | monthly | yearly
+// =========================
+// FINANCE METRICS
+// =========================
+$financeMetrics = [
+    'receive_payment' => (float) \App\Models\InspectionPayment::where('status', 'paid')->sum('total'),
 
-            // DATE RANGE SET
-            if ($range == 'monthly') {
-                $start = now()->startOfMonth();
-                $end = now()->endOfMonth();
-            } elseif ($range == 'yearly') {
-                $start = now()->startOfYear();
-                $end = now()->endOfYear();
-            } else {
-                $start = now()->startOfWeek();
-                $end = now()->endOfWeek();
-            }
+    'payout' => (float) \App\Models\InspectorPayout::where('status', 'paid')->sum('amount'),
+];
 
-            // METRICS
-            $financeMetrics = [
-                'receive_payment' => InspectionPayment::where('status', 'paid')->sum('total'),
-                'payout' => InspectionPayment::where('status', 'paid')->sum('inspector_share'),
-            ];
 
-            // CHART DATA
-            $financeChart = InspectionPayment::select(
-                    DB::raw($range == 'monthly' ? 'DATE(created_at) as label' : 'DAYNAME(created_at) as label'),
-                    DB::raw('SUM(total) as receive'),
-                    DB::raw('SUM(inspector_share) as payout')
-                )
-                ->where('status', 'paid')
-                ->whereBetween('created_at', [$start, $end])
-                ->groupBy('label')
-                ->orderBy('label')
-                ->get()
-                ->map(function ($item) {
-                    return [
-                        'label' => $item->label,
-                        'receive' => (float) $item->receive,
-                        'payout' => (float) $item->payout,
-                    ];
-                });
+// =========================
+// RECEIVE CHART (Payments)
+// =========================
+$receiveData = \App\Models\InspectionPayment::select(
+        DB::raw($range == 'monthly'
+            ? 'DATE(created_at) as label'
+            : 'DAYNAME(created_at) as label'
+        ),
+        DB::raw('SUM(total) as receive')
+    )
+    ->where('status', 'paid')
+    ->whereBetween('created_at', [$start, $end])
+    ->groupBy('label')
+    ->get()
+    ->keyBy('label');
+
+
+// =========================
+// PAYOUT CHART (Inspector)
+// =========================
+$payoutData = \App\Models\InspectorPayout::select(
+        DB::raw($range == 'monthly'
+            ? 'DATE(created_at) as label'
+            : 'DAYNAME(created_at) as label'
+        ),
+        DB::raw('SUM(amount) as payout')
+    )
+    ->where('status', 'paid')
+    ->whereBetween('created_at', [$start, $end])
+    ->groupBy('label')
+    ->get()
+    ->keyBy('label');
+
+
+// =========================
+// MERGED CHART (FINAL OUTPUT)
+// =========================
+$labels = $receiveData->keys()
+    ->merge($payoutData->keys())
+    ->unique()
+    ->values();
+
+$financeChart = $labels->map(function ($label) use ($receiveData, $payoutData) {
+    return [
+        'label' => $label,
+        'receive' => (float) ($receiveData[$label]->receive ?? 0),
+        'payout' => (float) ($payoutData[$label]->payout ?? 0),
+    ];
+});
+
+
+
+
+
+
+
+
+
+
 
         // =========================
         // RECENT USERS
