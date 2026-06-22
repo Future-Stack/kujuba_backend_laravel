@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Notification;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Notifications\PlatformNotification;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -146,4 +147,54 @@ class NotificationController extends Controller
             ], 500);
         }
     }
+    public function fetchAdminNotification(Request $request)
+    {
+        try {
+            // Group notifications by title, message, and type
+            $notifications = DB::table('notifications')
+                ->select(
+                    DB::raw('MIN(id) as id'),
+                    DB::raw('MAX(created_at) as sent_at'),
+                    DB::raw('JSON_UNQUOTE(JSON_EXTRACT(data, "$.title")) as title'),
+                    DB::raw('JSON_UNQUOTE(JSON_EXTRACT(data, "$.message")) as message'),
+                    DB::raw('JSON_UNQUOTE(JSON_EXTRACT(data, "$.type")) as type'),
+                    DB::raw('JSON_UNQUOTE(JSON_EXTRACT(data, "$.sent_to_label")) as sent_to'),
+                    DB::raw('COUNT(*) as recipients')
+                )
+                ->where('type','App\Notifications\AdminIconNotification')
+                ->groupByRaw('JSON_UNQUOTE(JSON_EXTRACT(data, "$.title")),
+                  JSON_UNQUOTE(JSON_EXTRACT(data, "$.message")),
+                  JSON_UNQUOTE(JSON_EXTRACT(data, "$.type")),
+                  JSON_UNQUOTE(JSON_EXTRACT(data, "$.sent_to_label"))')
+                ->orderBy('sent_at', 'desc')
+                ->get()
+                ->map(function ($n) {
+                    return [
+                        'id'          => $n->id,
+                        'title'       => $n->title,
+                        'message'     => $n->message,
+                        'type'        => ucfirst($n->type),
+                        'recipients'  => $n->recipients,
+                        'sent_to'     => $n->sent_to ?? 'All Users',
+                        'sent_at'     => $n->sent_at ? Carbon::parse($n->sent_at)->diffForHumans()  : null,
+                        'status'      => 'delivered',
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'total'   => $notifications->count(),
+                'data'    => $notifications,
+            ], 200);
+
+        } catch (\Exception $e) {
+            \Log::error('Notification grouping failed: '.$e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
 }

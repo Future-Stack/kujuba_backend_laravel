@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Notifications\AdminIconNotification;
 use Illuminate\Http\Request;
 use App\Models\InspectionReport;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use App\Models\InspectionAssign;
 use App\Models\InspectionPayment;
@@ -195,6 +197,15 @@ class InspectionReportController extends Controller
         'status' => 'completed',
         'completed_at' => now()
     ]);
+
+    $admin = User::where('user_type', 'admin')->first();
+
+    Notification::send($admin, new AdminIconNotification([
+        'type'      => 'report_submitted',
+        'title'     => 'Report submitted',
+        'message'   => 'A new Report has been submitted',
+        'sender_id' => null,
+    ]));
 
     return response()->json([
         'success' => true,
