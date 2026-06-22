@@ -8,10 +8,14 @@ use App\Models\InspectionBooking;
 use App\Models\InspectionPayment;
 use App\Models\InspectionType;
 use App\Models\Setting;
+use App\Models\User;
+use App\Notifications\AdminIconNotification;
+use App\Notifications\PlatformNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Stripe\PaymentIntent;
 use Stripe\Stripe;
 use Stripe\StripeClient;
@@ -144,6 +148,7 @@ class InspectionBookingRequestCotroller extends Controller
 
             ]);
 
+
             DB::commit();
 
             return response()->json([
@@ -200,7 +205,7 @@ class InspectionBookingRequestCotroller extends Controller
             $event = \Stripe\Webhook::constructEvent(
                 $payload,
                 $sigHeader,
-                config('services.stripe.webhook_secret')
+                config('services.stripe.booking_webhook_secret')
             );
 
             Log::info('event: ' . $event->type);
@@ -222,6 +227,15 @@ class InspectionBookingRequestCotroller extends Controller
                     }
                 }
             }
+
+            $admin = User::where('user_type', 'admin')->first();
+            // Send notification to group or single user
+            Notification::send($admin, new AdminIconNotification([
+                'type'      => 'inspection_booking',
+                'title'     => 'Inspection Booking',
+                'message'   => 'A new Inspection Booking has been created.',
+                'sender_id' => null,
+            ]));
             return response('OK', 200);
 
         } catch (\Exception $e) {
@@ -444,7 +458,7 @@ class InspectionBookingRequestCotroller extends Controller
             $event = \Stripe\Webhook::constructEvent(
                 $payload,
                 $sigHeader,
-                config('services.stripe.webhook_secret')
+                config('services.stripe.cancel_webhook_secret')
             );
 
             Log::info('event: ' . $event->type);
@@ -466,6 +480,15 @@ class InspectionBookingRequestCotroller extends Controller
                     }
                 }
             }
+            $admin = User::where('user_type', 'admin')->first();
+
+            Notification::send($admin, new AdminIconNotification([
+                'type'      => 'cancelled_booking',
+                'title'     => 'Booking Inspection Cancelled',
+                'message'   => 'A new Inspection Booking has been Cancelled.',
+                'sender_id' => null,
+            ]));
+
             return response('OK', 200);
 
         } catch (\Exception $e) {

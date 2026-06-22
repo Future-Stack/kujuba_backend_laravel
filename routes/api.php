@@ -122,7 +122,7 @@ Route::prefix('v1')->group(function () {
 
 
 
-//Inspector payment history route 
+//Inspector payment history route
         Route::prefix('inspector')->middleware('auth:sanctum')->group(function () {
             Route::get('/earnings/overview', [InspectorPaymentHistoryController::class, 'overview']);
             Route::get('/payouts', [InspectorPaymentHistoryController::class, 'index']);
@@ -274,6 +274,7 @@ Route::prefix('admin/dashboard')->group(function () {
 
         //Fetch All Notifications Record (Admin)
         Route::get('/all-notifications',[NotificationController::class, 'fetchAllNotification']);
+        Route::get('/admins-notifications',[NotificationController::class, 'fetchAdminNotification']);
 
         //Status wise Inspections
         Route::get('/status-bookings',[InspectionBookingRequestCotroller::class, 'statusBookingList']);

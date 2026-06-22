@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Reviews;
 
 use App\Http\Controllers\Controller;
 use App\Models\Review;
+use App\Models\User;
+use App\Notifications\AdminIconNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 
 class HomeownerReviewsController extends Controller
 {
@@ -40,6 +43,15 @@ class HomeownerReviewsController extends Controller
 
 
             $review = Review::create($data);
+
+            $admin = User::where('user_type', 'admin')->first();
+
+            Notification::send($admin, new AdminIconNotification([
+                'type'      => 'review_submitted',
+                'title'     => 'Review Submitted',
+                'message'   => 'A new Review has been submitted by Homeowner.',
+                'sender_id' => null,
+            ]));
 
             return response()->json([
                 'success' => true,

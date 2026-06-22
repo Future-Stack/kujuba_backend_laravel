@@ -68,7 +68,7 @@ class InspectionsSeeder extends Seeder
                 'status'                => 'paid',
                 'urgentStatus'          => 'yes',
                 'stripe_id'             => 'STRIPE-001',
-                'is_disbursed'          => false,
+                'is_disbursed'          => true,
                 'penalty_amount'        => null,
                 'refunded_amount'       => null,
             ]
