@@ -15,21 +15,22 @@ class InspectionReportObserver
             return;
         }
 
-        // eager load + get assign safely
-        $assign = $report->load('inspectionAssign.inspectionBooking.payment')
-                         ->inspectionAssign;
+        // load relation
+        $report->load('inspectionAssign.inspectionBooking.payment');
+
+        $assign = $report->inspectionAssign;
 
         if (!$assign) {
             Log::warning("Assign not found for report ID: {$report->id}");
             return;
         }
 
-        // sync status
+        // 🟡 1. SYNC assign status (safe)
         $assign->updateQuietly([
             'status' => $report->status
         ]);
 
-        // only completed triggers payout
+        // 🟢 only completed triggers payout
         if ($report->status !== 'completed') {
             return;
         }
@@ -41,21 +42,21 @@ class InspectionReportObserver
             return;
         }
 
-        // prevent duplicate payout
-        if ($payment->is_disbursed) {
-            Log::info("Already paid: {$payment->id}");
+        // 🚨 prevent duplicate payout
+        if ($payment->is_disbursed || $payment->status === 'processing') {
+            Log::info("Already processing/paid payment ID: {$payment->id}");
             return;
         }
 
-        // 🔥 IMPORTANT: mark processing BEFORE job
+        // 🔥 mark processing BEFORE queue
         $payment->updateQuietly([
             'status' => 'processing'
         ]);
 
-        // dispatch job
+        // 🚀 dispatch job
         ProcessInspectorPayout::dispatch($assign->id);
 
-        Log::info("🚀 Payout job dispatched", [
+        Log::info("Payout job dispatched", [
             'assign_id' => $assign->id,
             'payment_id' => $payment->id
         ]);
