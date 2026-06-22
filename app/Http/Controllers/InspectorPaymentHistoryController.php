@@ -13,134 +13,184 @@ class InspectorPaymentHistoryController extends Controller
      * 🟦 Earnings Overview (Dashboard)
      */
     public function overview(Request $request)
-    {
-        $userId = auth()->id();
+        {
+            $userId = auth()->id();
 
-        // Base query (reusable)
-        $baseQuery = InspectionPayment::where('payout_status', 'paid')
-            ->whereHas('inspectionBooking.inspectionAssign', function ($q) use ($userId) {
-                $q->where('inspector_id', $userId)
-                  ->where('status', 'completed');
-            });
+            $payments = InspectionPayment::where('status', 'paid')
+                ->whereHas('inspectionBooking.inspectionAssign', function ($q) use ($userId) {
+                    $q->where('inspector_id', $userId)
+                    ->where('status', 'completed');
+                });
 
-        // Total Earnings
-        $totalEarning = (clone $baseQuery)->sum('inspector_share');
+            // Total Earnings
+            $totalEarning = (clone $payments)->sum('inspector_share');
 
-        // This Month Earnings
-        $thisMonthEarning = (clone $baseQuery)
-            ->whereMonth('created_at', now()->month)
-            ->sum('inspector_share');
+            // This Month Earnings
+            $thisMonthEarning = (clone $payments)
+                ->whereMonth('updated_at', now()->month)
+                ->whereYear('updated_at', now()->year)
+                ->sum('inspector_share');
 
-        // Weekly Income (last 7 days)
-        $weeklyIncome = (clone $baseQuery)
-            ->whereBetween('created_at', [now()->subDays(7), now()])
-            ->sum('inspector_share');
+            // Last Month Earnings
+            $lastMonthEarning = (clone $payments)
+                ->whereMonth('updated_at', now()->subMonth()->month)
+                ->whereYear('updated_at', now()->subMonth()->year)
+                ->sum('inspector_share');
 
-        // Completed Jobs
-        $completedJobs = InspectionAssign::where('inspector_id', $userId)
-            ->where('status', 'completed')
-            ->count();
+            // Weekly Earnings
+            $weeklyIncome = (clone $payments)
+                ->whereBetween('updated_at', [
+                    now()->startOfWeek(),
+                    now()->endOfWeek()
+                ])
+                ->sum('inspector_share');
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'this_month_earning' => (float) $thisMonthEarning,
-                'total_earning' => (float) $totalEarning,
-                'completed_jobs' => $completedJobs,
-                'weekly_income' => (float) $weeklyIncome,
-            ]
-        ]);
-    }
+            // Completed Jobs
+            $completedJobs = InspectionAssign::where('inspector_id', $userId)
+                ->where('status', 'completed')
+                ->count();
 
+            // Rating
+            $rating = \App\Models\Review::whereHas('inspectionAssign', function ($q) use ($userId) {
+                    $q->where('inspector_id', $userId);
+                })
+                ->avg('rating');
+
+            // Growth %
+            $growthPercentage = 0;
+
+            if ($lastMonthEarning > 0) {
+                $growthPercentage =
+                    (($thisMonthEarning - $lastMonthEarning)
+                    / $lastMonthEarning) * 100;
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'this_month_earning' => round($thisMonthEarning, 2),
+                    'total_earning' => round($totalEarning, 2),
+                    'completed_jobs' => $completedJobs,
+                    'rating' => round($rating ?? 0, 1),
+
+                    'analytics' => [
+                        'weekly_income' => round($weeklyIncome, 2),
+                        'last_month_earning' => round($lastMonthEarning, 2),
+                        'growth_percentage' => round($growthPercentage, 2),
+                    ]
+                ]
+            ]);
+        }
+
+   
     /**
-     * 🟦 Recent Payouts List
+     * Recent Payouts
      */
-    public function index(Request $request)
-    {
-        $userId = auth()->id();
+    public function index()
+{
+    $userId = auth()->id();
 
-        $payouts = InspectionPayment::where('payout_status', 'paid')
-            ->whereHas('inspectionBooking.inspectionAssign', function ($q) use ($userId) {
-                $q->where('inspector_id', $userId);
-            })
-            ->with([
-                'inspectionBooking.inspectionTypes',
-                'inspectionBooking.inspectionAssign'
-            ])
-            ->latest()
-            ->get();
+    $payments = InspectionPayment::with([
+        'inspectionBooking.inspectionAssign',
+        'inspectionBooking.inspectionTypes'
+    ])
+        ->where('status', 'paid')
+        ->where('is_disbursed', true)
+        ->whereHas('inspectionBooking.inspectionAssign', function ($q) use ($userId) {
+            $q->where('inspector_id', $userId);
+        })
+        ->latest()
+        ->get();
 
-        $data = $payouts->map(function ($payment) {
+    $data = $payments->map(function ($payment) {
 
-            $assign = $payment->inspectionBooking?->inspectionAssign;
-            $type = $payment->inspectionBooking?->inspectionTypes?->first();
+        $booking = $payment->inspectionBooking;
+        $assign  = $booking?->inspectionAssign;
+        $type    = $booking?->inspectionTypes?->first();
 
-            return [
-                'id' => $payment->id,
-                'title' => $type?->title ?? 'Inspection',
-                'amount' => (float) $payment->inspector_share,
-                'status' => ucfirst($payment->payout_status),
+        return [
+            'payment_id' => $payment->id,
 
-                'address' => $payment->inspectionBooking?->address
-                    ?? $assign?->address
-                    ?? null,
+            'title' => $type?->title ?? 'Inspection',
 
-                'completed_at' => optional($assign?->completed_at)
-                    ?->format('M d, Y h:i A'),
-            ];
-        });
+            // ✅ ADD IMAGE FROM INSPECTION TYPE
+            'image' => $type?->img
+                ? asset('storage/' . $type->img)
+                : null,
 
-        return response()->json([
-            'success' => true,
-            'data' => $data,
-            'meta' => [
-                'total' => $payouts->count(),
-            ]
-        ]);
-    }
+            'amount' => (float) $payment->inspector_share,
 
-    /**
-     * 🟦 Single Payout Details
-     */
+            'status' => 'Paid',
+
+            'address' => $booking?->property_address,
+
+            'completed_at' => optional($assign?->updated_at)
+                ->format('M d, Y h:i A'),
+        ];
+    });
+
+    return response()->json([
+        'success' => true,
+        'data' => $data
+    ]);
+}
     public function show($id)
-    {
-        $userId = auth()->id();
+{
+    $userId = auth()->id();
 
-        $payment = InspectionPayment::where('id', $id)
-            ->where('payout_status', 'paid')
-            ->whereHas('inspectionBooking.inspectionAssign', function ($q) use ($userId) {
-                $q->where('inspector_id', $userId);
-            })
-            ->with([
-                'inspectionBooking.inspectionAssign',
-                'inspectionBooking.inspectionTypes'
-            ])
-            ->firstOrFail();
+    $payment = InspectionPayment::with([
+        'inspectionBooking.inspectionAssign',
+        'inspectionBooking.inspectionTypes'
+    ])
+        ->where('id', $id)
+        ->where('status', 'paid')
+        ->where('is_disbursed', true)
+        ->whereHas('inspectionBooking.inspectionAssign', function ($q) use ($userId) {
+            $q->where('inspector_id', $userId);
+        })
+        ->firstOrFail();
 
-        $assign = $payment->inspectionBooking?->inspectionAssign;
-        $type = $payment->inspectionBooking?->inspectionTypes?->first();
+    $booking = $payment->inspectionBooking;
+    $assign  = $booking?->inspectionAssign;
+    $type    = $booking?->inspectionTypes?->first();
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'title' => $type?->title ?? 'Inspection',
-                'amount' => (float) $payment->inspector_share,
-                'address' => $payment->inspectionBooking?->address
-                    ?? $assign?->address
-                    ?? null,
+    return response()->json([
+        'success' => true,
+        'data' => [
 
-                'completed_at' => optional($assign?->completed_at)?->format('M d, Y h:i A'),
+            'title' => $type?->title ?? 'Inspection',
 
-                'breakdown' => [
-                    'inspection_fee' => (float) $payment->total,
-                    'platform_fee' => (float) $payment->platform_fee,
-                    'inspector_share' => (float) $payment->inspector_share,
-                ],
+            // ✅ IMAGE
+            'image' => $type?->img
+                ? asset('storage/' . $type->img)
+                : null,
 
-                'payment_method' => 'Stripe',
-                'transaction_id' => $payment->trx_id,
-                'date_paid' => optional($payment->updated_at)?->format('M d, Y h:i A'),
-            ]
-        ]);
-    }
+            // ✅ STATUS ADDED (same as index style)
+            'status' => ucfirst($payment->status ?? 'pending'),
+
+            'payment_received' => true,
+
+            'amount' => (float) $payment->inspector_share,
+
+            'address' => $booking?->property_address,
+
+            'completed_at' => optional($assign?->updated_at)
+                ->format('M d, Y h:i A'),
+
+            'payment_breakdown' => [
+                'inspection_fee' => (float) $payment->total,
+                'platform_fee'   => (float) $payment->platform_fee,
+                'total_payout'   => (float) $payment->inspector_share
+            ],
+
+            'payment_method' => 'Stripe',
+
+            'date_paid' => optional($payment->updated_at)
+                ->format('M d, Y h:i A'),
+
+            'transaction_id' => $payment->trx_id,
+            'stripe_transfer_id' => $payment->stripe_id,
+        ]
+    ]);
+}
 }
