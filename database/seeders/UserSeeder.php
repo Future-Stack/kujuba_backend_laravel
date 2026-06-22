@@ -75,6 +75,7 @@ class UserSeeder extends Seeder
                 'license_number' => 'LIC-12345',
                 'license_expiry' => now()->addYear(),
                 'insurance_expiry' => now()->addYear(),
+                'stripe_onboarding_completed' => 1
             ]
         );
 
