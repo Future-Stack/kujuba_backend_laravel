@@ -17,10 +17,10 @@ class AdminPaymentController extends Controller
                 ->where('status', 'paid')
                 ->sum('total');
 
-            $completedPayouts = InspectionPayment::where('payout_status', 'paid')
+            $completedPayouts = InspectionPayment::where('status', 'paid')->where('payment_type', 'disbursement')
                 ->sum('inspector_share');
 
-            $pendingPayouts = InspectionPayment::where('payout_status', 'pending')
+            $pendingPayouts = InspectionPayment::where('status', 'pending')->where('payment_type', 'disbursement')
                 ->sum('inspector_share');
 
             $totalRefunded = InspectionPayment::where('payment_type', 'refund')
