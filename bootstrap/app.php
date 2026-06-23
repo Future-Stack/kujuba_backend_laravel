@@ -9,8 +9,6 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
-
-
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
@@ -19,14 +17,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        //
+        $middleware->validateCsrfTokens(except: [
+            'stripe/webhook', 
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
 
-//        $exceptions->shouldRenderJsonWhen(function (Request $request, Throwable $e) {
-//            return $request->is('api/*') || $request->expectsJson();
-//        });
-        // Authentication -> 401 JSON
         $exceptions->render(function (AuthenticationException $e, Request $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json([
@@ -36,7 +32,6 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        // Validation -> 422 JSON
         $exceptions->render(function (ValidationException $e, Request $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json([
@@ -47,7 +42,6 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        // Model not found -> 404 JSON
         $exceptions->render(function (ModelNotFoundException $e, Request $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json([
@@ -57,7 +51,6 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
-        // HTTP exceptions (abort(403), abort(404), etc.)
         $exceptions->render(function (HttpExceptionInterface $e, Request $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 $status = $e->getStatusCode();
