@@ -219,40 +219,34 @@ $financeChart = $labels->map(function ($label) use ($receiveData, $payoutData) {
                         : null,
                 ],
             ]);
+// =========================
+// TOP INSPECTORS
+// =========================
+$topInspectors = User::where('user_type', 'inspector')
+    ->with('profile')
+    ->withSum([
+        'inspectorPayouts as total_earnings' => function ($q) {
+            $q->where('status', 'paid');
+        }
+    ], 'amount')
+    ->orderByDesc('total_earnings')
+    ->take(5)
+    ->get()
+    ->map(function ($user) {
 
-        // =========================
-        // TOP INSPECTORS
-        // =========================
-        $topInspectors = User::where('user_type', 'inspector')
-            ->with('profile')
-            ->get()
-            ->map(function ($user) {
-
-                $earnings = InspectionPayment::where('status', 'paid')
-                ->whereHas('inspectionBooking.inspectionAssign', function ($q) use ($user) {
-                    $q->where('inspector_id', $user->id)
-                    ->where('status', 'completed');
-                })
-                ->sum('inspector_share');
-
-                return [
-                    'id' => $user->id,
-                    'name' => trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')),
-                    'profile' => [
-                        'phone' => $user->profile?->phone,
-                        'address' => $user->profile?->address,
-                        'avatar' => $user->profile?->avatar
-                            ? asset('storage/' . $user->profile->avatar)
-                            : null,
-                    ],
-                    'total_earnings' => (float) $earnings,
-                ];
-            })
-            ->sortByDesc('total_earnings')
-            ->values()
-            ->take(5);
-
-
+        return [
+            'id' => $user->id,
+            'name' => trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')),
+            'profile' => [
+                'phone' => $user->profile?->phone,
+                'address' => $user->profile?->address,
+                'avatar' => $user->profile?->avatar
+                    ? asset('storage/' . $user->profile->avatar)
+                    : null,
+            ],
+            'total_earnings' => (float) $user->total_earnings,
+        ];
+    });
 
 
             // =========================

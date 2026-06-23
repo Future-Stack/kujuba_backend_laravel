@@ -365,6 +365,101 @@ class InspectionReportController extends Controller
     ]);
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * HOMEOWNER REPORT (BY ASSIGN ID)
+ */
+public function homeownerAssignedReport($assignId)
+{
+    $report = InspectionReport::with([
+        'inspectionAssign.inspector',
+        'inspectionAssign.inspectionBooking.inspectionTypes',
+        'inspectionAssign.inspectionBooking.payment'
+    ])->where('inspection_assign_id', $assignId)->first();
+
+    // ================= NOT FOUND =================
+    if (!$report) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Report not found',
+            'data' => null
+        ], 404);
+    }
+
+    // ================= AUTH CHECK =================
+    $booking = $report->inspectionAssign->inspectionBooking;
+
+    if ($booking->user_id !== auth()->id()) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Unauthorized'
+        ], 403);
+    }
+
+    // ================= STATUS CHECK =================
+    if ($report->status !== 'completed') {
+        return response()->json([
+            'success' => false,
+            'message' => 'Report not completed yet'
+        ], 403);
+    }
+
+    return response()->json([
+        'success' => true,
+        'data' => [
+            // REPORT
+            'report' => $this->formatReport($report),
+
+            // INSPECTOR
+            'inspector' => [
+                'id' => $report->inspectionAssign?->inspector?->id,
+                'name' => trim(
+                    ($report->inspectionAssign?->inspector?->first_name ?? '') . ' ' .
+                    ($report->inspectionAssign?->inspector?->last_name ?? '')
+                ),
+                'email' => $report->inspectionAssign?->inspector?->email,
+            ],
+
+            // BOOKING
+            'booking' => [
+                'id' => $booking?->id,
+                'booking_uid' => $booking ? 'INS-' . (1000 + $booking->id) : null,
+                'property_address' => $booking?->property_address,
+                'property_type' => $booking?->property_type,
+                'property_size' => $booking?->property_size,
+                'scheduled_date' => $booking?->scheduled_date,
+                'scheduled_time' => $booking?->scheduled_time,
+                'status' => $booking?->status,
+                'property_img' => $booking?->property_img
+                    ? asset('storage/' . $booking->property_img)
+                    : null,
+            ],
+
+            // TYPES
+            'inspection_types' => $booking?->inspectionTypes->map(function ($type) {
+                return [
+                    'id' => $type->id,
+                    'title' => $type->title,
+                    'price' => (float) $type->price,
+                    'img' => $type->img
+                        ? asset('storage/' . $type->img)
+                        : null,
+                ];
+            })->values(),
+        ]
+    ]);
+}
     /**
      * HOMEOWNER FEEDBACK
      */

@@ -155,7 +155,7 @@ class InspectorManagementController extends Controller
         ]);
     }
 
-  /**
+/**
  * INSPECTOR DETAILS
  */
 public function show($id)
@@ -182,8 +182,10 @@ public function show($id)
         ->where('status', 'cancelled')
         ->count();
 
-    // ================= EARNINGS (FAST - FROM USERS TABLE) =================
-    $totalEarnings = (float) ($inspector->earnings ?? 0);
+    // ================= EARNINGS (FIXED - REAL SOURCE) =================
+    $totalEarnings = \App\Models\InspectorPayout::where('inspector_id', $id)
+        ->where('status', 'paid')
+        ->sum('amount');
 
     // ================= RESPONSE =================
     return response()->json([
@@ -211,7 +213,7 @@ public function show($id)
             'license_expiry' => $inspector->profile?->license_expiry,
             'insurance_expiry' => $inspector->profile?->insurance_expiry,
 
-            'member_since' => $inspector->created_at?->format('Y-m-d'),
+            'member_since' => optional($inspector->created_at)->format('Y-m-d'),
 
             // SPECIALIZATIONS
             'specializations' => $inspector->profile?->inspectionTypes
@@ -230,8 +232,8 @@ public function show($id)
                 'cancelled' => $cancelled,
             ],
 
-            // EARNINGS
-            'total_earnings' => $totalEarnings,
+            // EARNINGS (REAL + SAFE)
+            'total_earnings' => (float) $totalEarnings,
             'total_earnings_formatted' => '$' . number_format($totalEarnings, 2),
 
             // TIMESTAMPS

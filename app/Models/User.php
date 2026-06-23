@@ -68,4 +68,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(InspectionBooking::class, 'homeowner_id');
     }
+
+    public function inspectorPayouts()
+{
+    return $this->hasMany(\App\Models\InspectorPayout::class, 'inspector_id');
+}
 }
