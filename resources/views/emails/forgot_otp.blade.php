@@ -15,7 +15,7 @@
             Hello <strong>{{ $user->first_name ?? 'User' }}</strong>,
         </p>
         <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
-            We received a request to reset the password for your Kujuba account. Please use the verification code below to complete the process. 
+            We received a request to reset the password for your Connecttoinspect account. Please use the verification code below to complete the process. 
         </p>
         
         <div style="text-align: center; margin: 35px 0;">

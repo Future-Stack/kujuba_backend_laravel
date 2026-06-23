@@ -16,7 +16,7 @@
         </div>
         
         <p>If you did not request this change, you can safely ignore this email.</p>
-        <p>Regards,<br>Kujuba</p>
+        <p>Regards,<br>Connecttoinspect</p>
     </div>
 </body>
 </html>
