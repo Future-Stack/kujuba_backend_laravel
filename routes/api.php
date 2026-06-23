@@ -164,6 +164,7 @@ Route::prefix('v1')->group(function () {
         });
 
         //Homeowner report routes
+        Route::get('/homeowner/inspection-report/{assign_id}', [InspectionReportController::class, 'homeownerAssignedReport']);
             Route::get('/homeowner/reports/{id}', [InspectionReportController::class, 'homeownerReport']);
 
             Route::post('/homeowner/reports/{id}/note', [InspectionReportController::class, 'homeownerNote']);
