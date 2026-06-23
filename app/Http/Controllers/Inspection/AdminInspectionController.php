@@ -268,7 +268,7 @@ class AdminInspectionController extends Controller
 
                 // Homeowner Info
                 'homeowner' => [
-                    'name' => $booking->homeowner->first_name . ' ' . $inspector->last_name,
+                    'name' => $booking->homeowner->first_name,
                     'email' => $booking->homeowner->email,
                     'phone' => $booking->homeowner->phone,
                     'address' => $booking->property_address,
@@ -278,7 +278,7 @@ class AdminInspectionController extends Controller
 
                 // Inspector Info
                 'inspector' => $inspector ? [
-                    'name'       => $inspector->first_name . ' ' . $inspector->last_name,
+                    'name'       => $inspector->first_name,
                     'email'      => $inspector->email,
                     'phone'      => $inspector->profile?->phone,
                     'address'    => $inspector->profile?->address,
@@ -315,16 +315,16 @@ class AdminInspectionController extends Controller
 
                 // Report & Media
                 'report' => $report ? [
-                    'notes'             => $report->notes,
-                    'homeowner_feedback'=> $report->homeowner_feedback,
-                    'media'             => $report->media ? json_decode($report->media, true) : [],
-                    'report_file'       => $report->report_file,
-                    'is_favorite'       => $report->is_favorite,
-                    'status'            => $report->status,
-                    'started_at'        => $report->started_at,
-                    'completed_at'      => $report->completed_at,
-                    'cancelled_at'      => $report->cancelled_at,
-                    'uploaded_on'       => $report->created_at,
+                    'notes'             => $report->notes ?? null,
+                    'homeowner_feedback'=> $report->homeowner_feedback ?? null,
+                    'media'             => $report->media ?? [],
+                    'report_file'       => $report->report_file ?? null,
+                    'is_favorite'       => $report->is_favorite ?? null,
+                    'status'            => $report->status ?? null,
+                    'started_at'        => $report->started_at ?? null,
+                    'completed_at'      => $report->completed_at ?? null,
+                    'cancelled_at'      => $report->cancelled_at ?? null,
+                    'uploaded_on'       => $report->created_at ?? null,
                 ] : null,
 
                 // Reschedule History
