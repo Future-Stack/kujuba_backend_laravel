@@ -86,16 +86,146 @@ class InspectionReportController extends Controller
         ]);
     }
 
-    /**
-     * SAVE REPORT
-     */
-    public function save(Request $request, $id)
+//     /**
+//      * SAVE REPORT
+//      */
+//     public function save(Request $request, $id)
+// {
+//     $request->validate([
+//         'notes' => 'nullable|string',
+//         'photos.*' => 'image|mimes:jpg,jpeg,png|max:5120',
+//         'videos.*' => 'mimes:mp4,mov,avi|max:51200',
+//         'report_file' => 'nullable|file|mimes:pdf,jpg,png|max:20480',
+//     ]);
+
+//     $report = InspectionReport::firstOrCreate([
+//         'inspection_assign_id' => $id
+//     ]);
+
+//     if (in_array($report->status, ['completed', 'cancelled'])) {
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'Report is locked'
+//         ], 403);
+//     }
+
+//     if ($request->filled('notes')) {
+//         $report->notes = $request->notes;
+//     }
+
+//     $media = $report->media ?? ['photos' => [], 'videos' => []];
+
+//     if ($request->hasFile('photos')) {
+//         foreach ($request->file('photos') as $photo) {
+//             $media['photos'][] = $photo->store('inspection/photos', 'public');
+//         }
+//     }
+
+//     if ($request->hasFile('videos')) {
+//         foreach ($request->file('videos') as $video) {
+//             $media['videos'][] = $video->store('inspection/videos', 'public');
+//         }
+//     }
+
+//     $report->media = $media;
+
+//     if ($request->hasFile('report_file')) {
+//         if ($report->report_file) {
+//             Storage::disk('public')->delete($report->report_file);
+//         }
+
+//         $report->report_file = $request->file('report_file')
+//             ->store('inspection/reports', 'public');
+//     }
+
+//     $report->save();
+
+//     return response()->json([
+//         'success' => true,
+//         'message' => 'Saved successfully',
+//         'data' => $this->formatReport($report)
+//     ]);
+// }
+
+//     /**
+//      * FINAL SUBMIT
+//      */
+//    public function submit($id)
+// {
+//     $report = InspectionReport::firstOrCreate([
+//         'inspection_assign_id' => $id
+//     ]);
+
+//     if ($report->status === 'completed') {
+//         return response()->json([
+//             'success' => true,
+//             'message' => 'completed'
+//         ], 400);
+//     }
+
+//     if ($report->expires_at && now()->greaterThan($report->expires_at)) {
+//         return response()->json([
+//             'success' => false,
+//             'message' => '48 hours expired'
+//         ], 403);
+//     }
+
+//     if (empty($report->notes)) {
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'Notes is required'
+//         ], 400);
+//     }
+
+//     $media = $report->media ?? [];
+
+//     if (empty($media['photos']) && empty($media['videos'])) {
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'At least one photo or video is required'
+//         ], 400);
+//     }
+
+//     if (empty($report->report_file)) {
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'Report file is required'
+//         ], 400);
+//     }
+
+//     $report->update([
+//         'status' => 'completed',
+//         'completed_at' => now()
+//     ]);
+
+//     $admin = User::where('user_type', 'admin')->first();
+
+//     Notification::send($admin, new AdminIconNotification([
+//         'type'      => 'report_submitted',
+//         'title'     => 'Report submitted',
+//         'message'   => 'A new Report has been submitted',
+//         'sender_id' => null,
+//     ]));
+
+//     return response()->json([
+//         'success' => true,
+//         'message' => 'Inspection completed successfully',
+//         'data' => $this->formatReport($report)
+//     ]);
+// }
+
+
+
+
+
+public function saveReport(Request $request, $id)
 {
     $request->validate([
         'notes' => 'nullable|string',
         'photos.*' => 'image|mimes:jpg,jpeg,png|max:5120',
         'videos.*' => 'mimes:mp4,mov,avi|max:51200',
-        'report_file' => 'nullable|file|mimes:pdf,jpg,png|max:10240',
+        'report_file' => 'nullable|file|mimes:pdf,jpg,png|max:20480',
+        'action' => 'required|in:save,submit',
     ]);
 
     $report = InspectionReport::firstOrCreate([
@@ -109,11 +239,16 @@ class InspectionReportController extends Controller
         ], 403);
     }
 
+    // Save notes
     if ($request->filled('notes')) {
         $report->notes = $request->notes;
     }
 
-    $media = $report->media ?? ['photos' => [], 'videos' => []];
+    // Save media
+    $media = $report->media ?? [
+        'photos' => [],
+        'videos' => []
+    ];
 
     if ($request->hasFile('photos')) {
         foreach ($request->file('photos') as $photo) {
@@ -129,7 +264,9 @@ class InspectionReportController extends Controller
 
     $report->media = $media;
 
+    // Save report file
     if ($request->hasFile('report_file')) {
+
         if ($report->report_file) {
             Storage::disk('public')->delete($report->report_file);
         }
@@ -140,76 +277,68 @@ class InspectionReportController extends Controller
 
     $report->save();
 
-    return response()->json([
-        'success' => true,
-        'message' => 'Saved successfully',
-        'data' => $this->formatReport($report)
-    ]);
-}
-
     /**
      * FINAL SUBMIT
      */
-   public function submit($id)
-{
-    $report = InspectionReport::firstOrCreate([
-        'inspection_assign_id' => $id
-    ]);
+    if ($request->action === 'submit') {
 
-    if ($report->status === 'completed') {
+        if ($report->expires_at && now()->greaterThan($report->expires_at)) {
+            return response()->json([
+                'success' => false,
+                'message' => '48 hours expired'
+            ], 403);
+        }
+
+        if (empty($report->notes)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Notes is required'
+            ], 400);
+        }
+
+        $media = $report->media ?? [];
+
+        if (empty($media['photos']) && empty($media['videos'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'At least one photo or video is required'
+            ], 400);
+        }
+
+        if (empty($report->report_file)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Report file is required'
+            ], 400);
+        }
+
+        $report->update([
+            'status' => 'completed',
+            'completed_at' => now(),
+        ]);
+
+        $admin = User::where('user_type', 'admin')->first();
+
+        if ($admin) {
+            Notification::send($admin, new AdminIconNotification([
+                'type'      => 'report_submitted',
+                'title'     => 'Report submitted',
+                'message'   => 'A new Report has been submitted',
+                'sender_id' => null,
+            ]));
+        }
+
         return response()->json([
             'success' => true,
-            'message' => 'completed'
-        ], 400);
+            'message' => 'Inspection completed successfully',
+            'data' => $this->formatReport($report)
+        ]);
     }
 
-    if ($report->expires_at && now()->greaterThan($report->expires_at)) {
-        return response()->json([
-            'success' => false,
-            'message' => '48 hours expired'
-        ], 403);
-    }
-
-    if (empty($report->notes)) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Notes is required'
-        ], 400);
-    }
-
-    $media = $report->media ?? [];
-
-    if (empty($media['photos']) && empty($media['videos'])) {
-        return response()->json([
-            'success' => false,
-            'message' => 'At least one photo or video is required'
-        ], 400);
-    }
-
-    if (empty($report->report_file)) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Report file is required'
-        ], 400);
-    }
-
-    $report->update([
-        'status' => 'completed',
-        'completed_at' => now()
-    ]);
-
-    $admin = User::where('user_type', 'admin')->first();
-
-    Notification::send($admin, new AdminIconNotification([
-        'type'      => 'report_submitted',
-        'title'     => 'Report submitted',
-        'message'   => 'A new Report has been submitted',
-        'sender_id' => null,
-    ]));
-
+    // Draft Save
     return response()->json([
         'success' => true,
-        'message' => 'Inspection completed successfully',
+        'message' => 'Draft saved successfully',
         'data' => $this->formatReport($report)
     ]);
 }
