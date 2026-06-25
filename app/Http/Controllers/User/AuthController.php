@@ -17,7 +17,6 @@ use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
-
     public function getProfile(Request $request)
     {
         try {
@@ -38,7 +37,7 @@ class AuthController extends Controller
                 'last_name'  => $user->last_name,
                 'email'      => $user->email,
                 'status'     => $user->status,
-                'user_types' => $user->user_types,
+                'user_type'  => $user->user_type, 
                 'profile'    => $user->profile ? [
                     'id'                          => $user->profile->id,
                     'address'                     => $user->profile->address,
@@ -79,9 +78,6 @@ class AuthController extends Controller
     }
 
 
-    /**
-     * User Registration
-     */
     public function register(Request $request)
     {
         $request->validate([
@@ -125,12 +121,12 @@ class AuthController extends Controller
             $profile = Profile::create([
                 'user_id'                     => $user->id,
                 'address'                     => $request->address ?? null,
-                'profile_img'                 => $profileImgPath ?? null,
+                'profile_img'                 => $profileImgPath,
                 'phone'                       => $request->phone ?? null,
                 'license_number'              => $request->license_number ?? null,
                 'license_expiry'              => $request->license_expiry ?? null,
                 'insurance_expiry'            => $request->insurance_expiry ?? null,
-                'stripe_account_id'           => null,
+                'stripe_account_id'           => null, 
                 'stripe_customer_id'          => null,
                 'stripe_onboarding_completed' => false,
             ]);
@@ -209,9 +205,7 @@ class AuthController extends Controller
             $profile->address = $request->address;
             $profile->phone   = $request->phone;
 
-            $currentUserType = $user->user_types;
-
-            if ($currentUserType === 'inspector') {
+            if ($user->user_type === 'inspector') {
                 $profile->license_number   = $request->license_number;
                 $profile->license_expiry   = $request->license_expiry;
                 $profile->insurance_expiry = $request->insurance_expiry;
@@ -230,12 +224,12 @@ class AuthController extends Controller
                 'success' => true,
                 'message' => 'Profile updated successfully.',
                 'data'    => [
-                    'id'         => $user->id,
-                    'first_name' => $user->first_name,
-                    'last_name'  => $user->last_name,
-                    'email'      => $user->email,
-                    'user_types' => $user->user_types,
-                    'profile'    => [
+                    'id'        => $user->id,
+                    'first_name'=> $user->first_name,
+                    'last_name' => $user->last_name,
+                    'email'     => $user->email,
+                    'user_type' => $user->user_type, // ✅ fixed
+                    'profile'   => [
                         'id'                          => $profile->id,
                         'address'                     => $profile->address,
                         'phone'                       => $profile->phone,
@@ -276,9 +270,6 @@ class AuthController extends Controller
     }
 
 
-    /**
-     * User Login
-     */
     public function login(Request $request)
     {
         try {
@@ -340,9 +331,6 @@ class AuthController extends Controller
     }
 
 
-    /**
-     * Get Authenticated User Details
-     */
     public function me(Request $request)
     {
         return response()->json([
@@ -352,9 +340,6 @@ class AuthController extends Controller
     }
 
 
-    /**
-     * User Logout
-     */
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
@@ -366,9 +351,6 @@ class AuthController extends Controller
     }
 
 
-    /**
-     * Forgot Password - Request OTP
-     */
     public function forgotPassword(Request $request)
     {
         try {
@@ -417,9 +399,6 @@ class AuthController extends Controller
     }
 
 
-    /**
-     * Verify OTP
-     */
     public function verifyOtp(Request $request)
     {
         try {
@@ -465,7 +444,6 @@ class AuthController extends Controller
 
             $isRegisterFlow = is_null($user->email_verified_at);
 
-            // OTP clear 
             $user->update([
                 'otp'               => null,
                 'otp_expire_at'     => null,
@@ -474,11 +452,19 @@ class AuthController extends Controller
 
             if ($isRegisterFlow) {
                 $user = $user->fresh();
+
+                if ($user->user_type === 'inspector') {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Email verified successfully. Your account is under admin review. Please wait for approval.',
+                    ], 200);
+                }
+
                 $token = $user->createToken(config('auth.token_name', 'auth_token'))->plainTextToken;
 
                 return response()->json([
                     'success'      => true,
-                    'message'      => 'Email verified successfully.',
+                    'message'      => 'Email verified and logged in successfully.',
                     'access_token' => $token,
                     'token_type'   => 'Bearer',
                     'user'         => $user,
@@ -507,9 +493,6 @@ class AuthController extends Controller
     }
 
 
-    /**
-     * Resend OTP
-     */
     public function resendOtp(Request $request)
     {
         try {
@@ -559,9 +542,6 @@ class AuthController extends Controller
     }
 
 
-    /**
-     * Reset Password
-     */
     public function resetPassword(Request $request)
     {
         try {
@@ -616,9 +596,6 @@ class AuthController extends Controller
     }
 
 
-    /**
-     * Change Password (Authenticated User)
-     */
     public function changePassword(Request $request)
     {
         try {
