@@ -132,9 +132,10 @@ Route::prefix('v1')->group(function () {
         Route::prefix('inspection-reports')->group(function () {
             //inspector his own report history
             Route::get('/history/{inspectorId}', [InspectionReportController::class, 'inspectorReportHistory']);
-
+           
             // start inspection
             Route::post('/{id}/start', [InspectionReportController::class, 'start']);
+             Route::post('/inspection-report/{assign_id}', [InspectionReportController::class, 'saveReport']);
 
             // save everything (notes + media + report)
             Route::post('/{id}/save', [InspectionReportController::class, 'save']);
@@ -161,6 +162,7 @@ Route::prefix('v1')->group(function () {
 
             Route::post('/{id}/archive', [AdminInspectionReportController::class, 'archive']);
             Route::post('/{id}/favorite', [AdminInspectionReportController::class, 'toggleFavorite']);
+            Route::post('/{id}/restore', [AdminInspectionReportController::class, 'restore']);
         });
 
         //Homeowner report routes
@@ -279,6 +281,7 @@ Route::prefix('admin/dashboard')->group(function () {
 
         //Status wise Inspections
         Route::get('/status-bookings',[InspectionBookingRequestCotroller::class, 'statusBookingList']);
+        Route::get('/reschedule-bookings-list',[InspectionBookingRequestCotroller::class, 'rescheduleBookingList']);
 
         //Inspection Details
         Route::get('/inspection-details/{id}', [InspectionBookingRequestCotroller::class, 'inspectionDetails']);

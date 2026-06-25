@@ -25,10 +25,9 @@ class AdminInspectionReportController extends Controller
 
             'total_completed_reports' => InspectionReport::where('status', 'completed')->count(),
 
-            
+             'total_archived_reports' => InspectionReport::where('is_archived', true)->count(),
 
-            // 🔥 archived = favorite true
-            'total_archived_reports' => InspectionReport::where('is_favorite', true)->count(),
+           
         ]
         ]);
     }
@@ -36,22 +35,24 @@ class AdminInspectionReportController extends Controller
     /**
      * 📋 LIST
      */
-    public function index(Request $request)
+   public function index(Request $request)
 {
     $query = InspectionReport::with(
         'inspectionAssign.inspectionBooking.user',
         'inspectionAssign.inspector'
     );
 
-    // ✅ STATUS FILTER (SAFE + LOWERCASE NORMALIZATION)
-    if ($request->filled('status')) {
-
-        $status = strtolower($request->status);
-
-        $query->where('status', $status);
+    // archive filter
+    if ($request->has('is_archived')) {
+        $query->where('is_archived', $request->is_archived);
     }
 
-    // 🔍 SEARCH
+    // status filter
+    if ($request->filled('status')) {
+        $query->where('status', strtolower($request->status));
+    }
+
+    // search
     if ($request->filled('search')) {
         $search = $request->search;
 
@@ -66,7 +67,8 @@ class AdminInspectionReportController extends Controller
     return response()->json([
         'success' => true,
         'data' => [
-            'reports' => $reports->getCollection()->map(fn ($report) => $this->formatReport($report)),
+            'reports' => $reports->getCollection()
+                ->map(fn($report) => $this->formatReport($report)),
 
             'pagination' => [
                 'current_page' => $reports->currentPage(),
@@ -116,18 +118,60 @@ class AdminInspectionReportController extends Controller
      * 📦 ARCHIVE REPORT
      */
     public function archive($id)
-    {
-         $report = InspectionReport::findOrFail($id);
+{
+    $report = InspectionReport::with(
+        'inspectionAssign.inspectionBooking.user',
+        'inspectionAssign.inspector'
+    )->findOrFail($id);
 
-            $report->update([
-                'is_favorite' => !$report->is_favorite
-            ]);
+    if ($report->is_archived) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Report already archived'
+        ], 400);
+    }
 
-            return response()->json([
-                'success' => true,
-                'data' => $report
-            ]);
-     }
+    $report->update([
+        'is_archived' => true
+    ]);
+
+    $report->refresh();
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Report archived successfully',
+        'data' => $this->formatReport($report)
+    ]);
+}
+
+
+    //restore
+public function restore($id)
+{
+    $report = InspectionReport::with(
+        'inspectionAssign.inspectionBooking.user',
+        'inspectionAssign.inspector'
+    )->findOrFail($id);
+
+    if (!$report->is_archived) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Report is not archived'
+        ], 400);
+    }
+
+    $report->update([
+        'is_archived' => false
+    ]);
+
+    $report->refresh();
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Report restored successfully',
+        'data' => $this->formatReport($report)
+    ]);
+}
 
     /**
      * ⭐ FAVORITE TOGGLE
@@ -186,6 +230,8 @@ class AdminInspectionReportController extends Controller
 
         'is_favorite' =>
             (bool) $report->is_favorite,
+
+            'is_archived' => (bool) $report->is_archived,
 
         'homeowner_feedback' =>
             $report->homeowner_feedback ?? null,
