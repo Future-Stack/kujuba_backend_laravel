@@ -30,6 +30,7 @@ return new class extends Migration
 
             //  favorite system
             $table->boolean('is_favorite')->default(false);
+            $table->boolean('is_archived')->default(false);
 
             //  workflow status
             $table->enum('status', [
@@ -37,7 +38,7 @@ return new class extends Migration
                 'started',
                 'completed',
                 'cancelled',
-                'archived'
+               
             ])->default('pending');
 
             // ⏱ workflow timestamps

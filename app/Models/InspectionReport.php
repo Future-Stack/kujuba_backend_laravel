@@ -16,6 +16,7 @@ class InspectionReport extends Model
         'media',
         'report_file',
         'is_favorite',
+        'is_archived',
         'status',
         'started_at',
         'completed_at',
