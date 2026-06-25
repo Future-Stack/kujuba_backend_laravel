@@ -355,39 +355,48 @@ $topInspectionTypes = DB::table('booking_inspection_type as pivot')
                 'duration' => optional($item->created_at)->diffForHumans(),
             ]);
 
-        // =========================
-        // BAR CHART (DATE WISE)
-        // =========================
-        $startDate = $request->start_date ? Carbon::parse($request->start_date) : now()->subDays(6);
-        $endDate = $request->end_date ? Carbon::parse($request->end_date) : now();
+                // =========================
+            // BAR CHART (DATE WISE)
+            // =========================
+            $startDate = $request->start_date
+                ? Carbon::parse($request->start_date)
+                : now()->subDays(6);
 
-        $barChart = InspectionAssign::select(
-                DB::raw('DATE(created_at) as date'),
-                DB::raw("SUM(CASE WHEN status='assigned' THEN 1 ELSE 0 END) as assigned"),
-                DB::raw("SUM(CASE WHEN status='in_progress' THEN 1 ELSE 0 END) as started"),
-                DB::raw("SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END) as completed")
-            )
-            ->whereBetween('created_at', [$startDate, $endDate])
-            ->groupBy(DB::raw('DATE(created_at)'))
-            ->orderBy('date')
-            ->get()
-            ->map(fn($item) => [
-                'date' => Carbon::parse($item->date)->format('d M'),
-                'assigned' => $item->assigned,
-                'started' => $item->started,
-                'completed' => $item->completed,
-            ]);
+            $endDate = $request->end_date
+                ? Carbon::parse($request->end_date)
+                : now();
 
-        // =========================
-        // CIRCLE CHART
-        // =========================
-        $circleChart = [
-            'total_task' => InspectionAssign::count(),
-            'assigned_inspection' => InspectionAssign::where('status','assigned')->count(),
-            'started_inspection' => InspectionAssign::where('status','in_progress')->count(),
-            'completed_inspection' => InspectionAssign::where('status','completed')->count(),
-        ];
+            $barChart = InspectionAssign::select(
+                    DB::raw('DATE(created_at) as date'),
+                    DB::raw("SUM(CASE WHEN status = 'assigned' THEN 1 ELSE 0 END) as assigned"),
+                    DB::raw("SUM(CASE WHEN status = 'started' THEN 1 ELSE 0 END) as started"),
+                    DB::raw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed")
+                )
+                ->whereBetween('created_at', [$startDate, $endDate])
+                ->groupBy(DB::raw('DATE(created_at)'))
+                ->orderBy('date')
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'date'      => Carbon::parse($item->date)->format('d M'),
+                        'assigned'  => (int) $item->assigned,
+                        'started'   => (int) $item->started,
+                        'completed' => (int) $item->completed,
+                    ];
+                });
 
+            // =========================
+            // CIRCLE CHART
+            // =========================
+            $circleChart = [
+                'total_task' => InspectionAssign::count(),
+
+                'assigned_inspection' => InspectionAssign::where('status', 'assigned')->count(),
+
+                'started_inspection' => InspectionAssign::where('status', 'started')->count(),
+
+                'completed_inspection' => InspectionAssign::where('status', 'completed')->count(),
+            ];
         // =========================
         // RECENT ACTIVITY
         // =========================
