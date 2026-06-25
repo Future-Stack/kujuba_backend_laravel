@@ -50,3 +50,90 @@ stripe listen --forward-to http://localhost:8000/webhooks/stripe
 ```bash
 stripe trigger payment_intent.succeeded
 ```
+
+## Full Local Testing Flow
+
+### You need 4 terminals running simultaneously:
+
+
+### Terminal 1 — Laravel Server
+```bashphp 
+artisan serve
+```
+
+### Terminal 2 — Queue Worker
+```bash
+php artisan queue:work
+```
+
+### Terminal 3 — Booking Webhook Listener
+
+```bash
+stripe listen --forward-to http://localhost:8000/api/v1/booking/webhook-handle
+Copy the whsec_ secret → update .env STRIPE_BOOKING_WEBHOOK_SECRET
+```
+
+### Terminal 4 — Cancel Webhook Listener
+```bash
+stripe listen --forward-to http://localhost:8000/api/v1/booking/cancel-webhook-handle
+Copy the whsec_ secret → update .env STRIPE_CANCEL_WEBHOOK_SECRET
+Then:
+bashphp artisan config:clear
+```
+
+## Step by Step Test Flow
+## Step 1 — Create Booking
+```
+POST /api/v1/booking/store
+From response grab:
+json"stripe": {
+"id": "pi_xxxxxxxx"   ← copy this
+}
+```
+
+## Step 2 — Confirm Payment (simulates frontend)
+```bash
+stripe payment_intents confirm pi_xxxxxxxx --payment-method pm_card_visa 
+--return-url https://localhost
+```
+## Watch Terminal 3 — should show:
+```
+--> payment_intent.succeeded
+<-- [200] POST http://localhost:8000/api/v1/booking/webhook-handle
+Watch Terminal 2 — should show:
+App\Notifications\AdminIconNotification ... DONE
+✅ Check DB — inspection_payments.status should be paid
+```
+
+## Step 3 — Cancel Booking
+```
+POST /api/v1/booking/cancel
+{
+"booking_id": 1
+}
+```
+
+## Watch Terminal 4 — should show:
+```
+--> charge.refunded
+<-- [200] POST http://localhost:8000/api/v1/booking/cancel-webhook-handle
+```
+
+## Watch Terminal 2 — should show:
+```
+App\Notifications\AdminIconNotification ... DONE
+✅ Check DB:
+
+inspection_payments — new refund row with status = completed
+inspection_bookings.status — should be cancelled
+
+
+Quick DB Check Commands
+bash# Check payment status
+php artisan tinker
+>>> InspectionPayment::latest()->get(['id','status','payment_type','stripe_id']);
+
+# Check booking status
+>>> InspectionBooking::latest()->get(['id','status']);
+That's the complete local flow identical to live.
+```

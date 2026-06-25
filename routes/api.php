@@ -74,6 +74,9 @@ Route::prefix('v1')->group(function () {
 
         Route::post('/book-inspection', [InspectionBookingRequestCotroller::class, 'store']);
 
+        //Cancel Booking
+        Route::post('/cancel-booking',[InspectionBookingRequestCotroller::class,'cancelBookingInspection']);
+
         Route::get('/my-inspections', [InspectionBookingController::class, 'index']);
 
         Route::post('/booking/complete/{bookingId}', [InspectionBookingController::class, 'completeInspectionAndPayout']);
@@ -132,7 +135,7 @@ Route::prefix('v1')->group(function () {
         Route::prefix('inspection-reports')->group(function () {
             //inspector his own report history
             Route::get('/history/{inspectorId}', [InspectionReportController::class, 'inspectorReportHistory']);
-           
+
             // start inspection
             Route::post('/{id}/start', [InspectionReportController::class, 'start']);
              Route::post('/inspection-report/{assign_id}', [InspectionReportController::class, 'saveReport']);
@@ -290,8 +293,7 @@ Route::prefix('admin/dashboard')->group(function () {
         Route::get('/decline-reschedule/{assign_id}',[RescheduleBookingRequestController::class,'declineRequest']);
         Route::get('/accept-reschedule/{assign_id}',[RescheduleBookingRequestController::class,'acceptRequest']);
 
-        //Cancel Booking
-        Route::get('/cancel-booking/{booking_id}',[InspectionBookingRequestCotroller::class,'cancelBookingInspection']);
+
 
         //Inspections (Admin)
         Route::get('/admin/inspection-metrics',[AdminInspectionController::class, 'inspectionMetrics']);

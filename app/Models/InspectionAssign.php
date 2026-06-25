@@ -8,16 +8,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class InspectionAssign extends Model
 {
     protected $fillable = [
-        'inspection_booking_id','inspector_id','distance',
-        'estimate_time','isAssignedAdmin','isReschedule','status'
+        'inspection_booking_id', 'inspector_id', 'distance',
+        'estimate_time', 'isAssignedAdmin', 'isReschedule', 'status'
     ];
 
-    public function inspectionBooking() :BelongsTo
+    public function inspectionBooking(): BelongsTo
     {
         return $this->belongsTo(InspectionBooking::class);
     }
 
-    public function inspector() :BelongsTo
+    public function inspector(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
@@ -37,10 +37,20 @@ class InspectionAssign extends Model
         return $this->hasOne(Review::class);
     }
 
-  
 
     public function payment()
-{
-    return $this->belongsTo(InspectionPayment::class, 'inspection_booking_id', 'inspection_booking_id');
-}
+    {
+        return $this->belongsTo(InspectionPayment::class, 'inspection_booking_id', 'inspection_booking_id');
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(InspectionPayment::class, 'inspection_booking_id');
+    }
+
+    public function inspectionFeePayment()
+    {
+        return $this->hasOne(InspectionPayment::class, 'inspection_booking_id')
+            ->where('payment_type', 'inspection_fee');
+    }
 }

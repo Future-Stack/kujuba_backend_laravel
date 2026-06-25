@@ -128,15 +128,19 @@ class InspectionController extends Controller
 
     public function statusInspections(Request $request)
     {
+
         try {
             $filter = $request->query('filter');
             $user = Auth::user();
+
+
 
             // Base query with relationships
             $query = InspectionAssign::with([
                 'inspectionBooking:id,homeowner_id,property_address,property_type,property_img,scheduled_date,scheduled_time,urgent_status,status',
                 'inspectionBooking.inspectionTypes:id,title',
                 'inspector:id,first_name,last_name',
+                'inspectionFeePayment'
             ])
                 ->where('status', $filter)
                 ->latest();
@@ -157,6 +161,7 @@ class InspectionController extends Controller
 
             $inspections = $query->get()->map(function ($assign) {
                 $booking = $assign->inspectionBooking;
+                $payment = $assign->inspectionFeePayment;
                 return [
                     'id'                => $assign->id,
                     'booking_id'        => $booking->id,
@@ -169,6 +174,9 @@ class InspectionController extends Controller
                     'urgent_status'     => $booking->urgent_status,
                     'status'            => $assign->status,
                     'inspector'         => $assign->inspector ? $assign->inspector->first_name.' '.$assign->inspector->last_name : null,
+                    'subtotal'           =>  $payment->subtotal ?? null,
+                    'total'             =>  $payment->total ?? null,
+
                 ];
             });
 

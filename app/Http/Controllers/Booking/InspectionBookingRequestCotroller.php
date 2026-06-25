@@ -48,11 +48,11 @@ class InspectionBookingRequestCotroller extends Controller
         $urgentFee = Setting::first()->urgent_inspection_fee ?? 50.00;
 
         if ($request->urgent_status) {
-            $total = $subtotal + $platformFee + $urgentFee;
-            $inspector_share = $subtotal + $urgentFee;
+            $total = $subtotal + $urgentFee;
+            $inspector_share = ($subtotal - $platformFee)  + $urgentFee;
         } else {
-            $total = $subtotal + $platformFee;
-            $inspector_share = $subtotal;
+            $total = $subtotal;
+            $inspector_share = $subtotal - $platformFee;
         }
 
 
@@ -132,6 +132,7 @@ class InspectionBookingRequestCotroller extends Controller
 
                 'metadata' => [
                     'type' => 'booking',
+                    'booking_id' => $booking->id,
                     'booking_amount' => $total,
                     'payment_id' => $payment->id,
                 ],
@@ -155,6 +156,8 @@ class InspectionBookingRequestCotroller extends Controller
                 'success' => true,
                 'message' => 'Booking created successfully.',
                 'amount' => $total,
+                'booking_id' => $booking->id,
+                'payment_id' => $payment->id,
                 'stripe' => $paymentIntent,
             ], 201);
 
@@ -423,27 +426,55 @@ class InspectionBookingRequestCotroller extends Controller
         }
     }
 
-    public function cancelBookingInspection($booking_id)
+    public function cancelBookingInspection(Request $request)
     {
+        $request->validate([
+           'booking_id' => 'required',
+           'cancellation_notes' => 'nullable',
+        ]);
         try {
             DB::beginTransaction();
 
-            $booking = InspectionBooking::findOrFail($booking_id);
-            $payment = InspectionPayment::where('inspection_booking_id', $booking_id)->firstOrFail();
+            $booking = InspectionBooking::findOrFail($request->booking_id);
+            $payment = InspectionPayment::where('inspection_booking_id', $request->booking_id)
+                ->where('payment_type', 'inspection_fee')
+                ->firstOrFail();
+
+            // ✅ Guard — if payment was never completed, just cancel the booking
+            if ($payment->status !== 'paid') {
+                $booking->update([
+                    'status' => 'cancelled',
+                    'cancellation_notes' => $request->cancellation_notes,
+                ]);
+
+                DB::commit();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Booking cancelled. Payment was not completed — no refund issued.',
+                    'refunded_amount' => 0,
+                    'cancellation_fee' => 0,
+                ]);
+            }
+
 
             $hours = now()->diffInHours($booking->created_at);
 
             $cancellationFee = 0;
+            $admin_share = 0;
+            $platform_fee = 0;
+            $inspector_share = 0;
             $setting = Setting::first();
-            if ($hours < 2) {
-                $cancellationFee = $setting->last_minute_cancel_penalty ?? 75;
-            } elseif ($hours < 24) {
-                $cancellationFee = $setting->late_cancellation_penalty ?? 50;
+            if ($booking->inspectionAssign) {
+                if ($hours < 2) {
+                    $cancellationFee = $setting->last_minute_cancel_penalty ?? 75;
+                } elseif ($hours < 24) {
+                    $cancellationFee = $setting->late_cancellation_penalty ?? 50;
+                }
+                $admin_share = $cancellationFee/2;
+                $platform_fee = $admin_share;
+                $inspector_share = $cancellationFee/2;
             }
-
-            $admin_share = $cancellationFee/2;
-            $platform_fee = $admin_share;
-            $inspector_share = $cancellationFee/2;
 
             // Calculate refund amount (total minus fee)
             $refundAmount = max(($payment->total - $cancellationFee), 0);
@@ -454,6 +485,7 @@ class InspectionBookingRequestCotroller extends Controller
             $refund = $stripe->refunds->create([
                 'payment_intent' => $payment->stripe_id,
                 'amount'         => $refundAmount * 100, // cents
+
             ]);
 
             // Create New Payment Table
@@ -512,14 +544,17 @@ class InspectionBookingRequestCotroller extends Controller
 
 
             if ($event->type === 'charge.refunded') {
-                $intent = $event->data->object;
-                $paymentId = $intent->metadata->payment_id ?? null;
 
-                Log::info("Payment ID: " . $paymentId);
+                $charge = $event->data->object;
+                $paymentIntentId = $charge->payment_intent;
 
-                if ($paymentId) {
-                    $payment = InspectionPayment::find($paymentId);
+                $payment = InspectionPayment::where('stripe_id', $paymentIntentId)
+                    ->where('payment_type', 'refund')
+                    ->first();
 
+                Log::info("Payment ID: " . $payment);
+
+                if ($payment) {
                     if ($payment && $payment->status !== 'paid') {
                         $payment->update([
                             'status' => 'paid',

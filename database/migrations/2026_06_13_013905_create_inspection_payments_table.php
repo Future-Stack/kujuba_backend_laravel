@@ -39,6 +39,7 @@ return new class extends Migration {
                 'paid',
                 'failed'
             ])->default('pending');
+            $table->text('cancellation_notes')->nullable();
             $table->timestamps();
         });
     }
