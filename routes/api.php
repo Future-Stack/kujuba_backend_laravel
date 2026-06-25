@@ -132,9 +132,10 @@ Route::prefix('v1')->group(function () {
         Route::prefix('inspection-reports')->group(function () {
             //inspector his own report history
             Route::get('/history/{inspectorId}', [InspectionReportController::class, 'inspectorReportHistory']);
-
+           
             // start inspection
             Route::post('/{id}/start', [InspectionReportController::class, 'start']);
+             Route::post('/inspection-report/{assign_id}', [InspectionReportController::class, 'saveReport']);
 
             // save everything (notes + media + report)
             Route::post('/{id}/save', [InspectionReportController::class, 'save']);
