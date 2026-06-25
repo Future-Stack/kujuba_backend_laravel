@@ -86,8 +86,7 @@ class AuthController extends Controller
             'last_name'             => 'required|string|max:255',
             'email'                 => 'required|string|email|max:255|unique:users',
             'password'              => ['required', 'string', 'confirmed', Password::min(8)],
-            'status'                => 'required|string|max:255',
-            'user_type'            => 'required|string|max:255',
+            'user_type'             => 'required|string|in:inspector,homeowner',
 
             'address'               => 'nullable|string',
             'phone'                 => 'nullable|string|max:50',
@@ -103,6 +102,8 @@ class AuthController extends Controller
         DB::beginTransaction();
 
         try {
+            $status = $request->user_type === 'inspector' ? 'pending' : 'active';
+
             $otp = random_int(1000, 9999);
 
             $user = User::create([
@@ -110,8 +111,8 @@ class AuthController extends Controller
                 'last_name'     => $request->last_name,
                 'email'         => $request->email,
                 'password'      => Hash::make($request->password),
-                'status'        => $request->status,
-                'user_type'    => $request->user_type,
+                'status'        => $status, 
+                'user_type'     => $request->user_type,
                 'otp'           => $otp,
                 'otp_expire_at' => now()->addMinutes(5),
             ]);
@@ -314,9 +315,13 @@ class AuthController extends Controller
             }
 
             if ($user->status !== 'active') {
+                $message = $user->status === 'pending' 
+                    ? 'Your account is under admin review. Please wait for approval.' 
+                    : 'Your account is inactive. Please contact support.';
+
                 return response()->json([
                     'success' => false,
-                    'message' => 'Your account is inactive. Please contact support.'
+                    'message' => $message
                 ], 403);
             }
 
@@ -468,12 +473,9 @@ class AuthController extends Controller
             $isRegisterFlow = is_null($user->email_verified_at) || $user->status === 'pending';
 
             if ($isRegisterFlow) {
-
                 $user->email_verified_at = $user->email_verified_at ?? now();
                 $user->otp               = null;
                 $user->otp_expire_at     = null;
-                $user->status            = 'active';
-
                 $user->save();
 
                 $user = $user->fresh();
@@ -490,8 +492,12 @@ class AuthController extends Controller
                 ], 200);
             }
 
+            \Illuminate\Support\Facades\Cache::put('password_reset_approved_' . $user->email, true, now()->addMinutes(15));
+
             $user->update([
                 'email_verified_at' => $user->email_verified_at ?? now(),
+                'otp'               => null,
+                'otp_expire_at'     => null,
             ]);
 
             return response()->json([
@@ -575,34 +581,34 @@ class AuthController extends Controller
         try {
             $request->validate([
                 'email'        => 'required|email|exists:users,email',
-                'otp'          => 'required|digits:4',
                 'new_password' => [
                     'required',
                     'confirmed',
-                    Password::min(8)->letters()->mixedCase()->numbers()->symbols()
+                    \Illuminate\Validation\Rules\Password::min(8)->letters()->mixedCase()->numbers()->symbols()
                 ],
             ], [
                 'email.required'         => 'Email field is required.',
                 'email.exists'           => 'Email not found.',
-                'otp.required'           => 'OTP is required to reset password.',
                 'new_password.required'  => 'New password is required.',
                 'new_password.confirmed' => 'New password confirmation does not match.',
             ]);
 
-            $user = User::where('email', $request->email)->first();
-
-            if ((string)$user->otp !== (string)$request->otp) {
+            if (!\Illuminate\Support\Facades\Cache::has('password_reset_approved_' . $request->email)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Invalid or expired session. Please verify OTP again.'
                 ], 400);
             }
 
+            $user = User::where('email', $request->email)->first();
+
             $user->update([
                 'password'      => Hash::make($request->new_password),
                 'otp'           => null,
                 'otp_expire_at' => null,
             ]);
+
+            \Illuminate\Support\Facades\Cache::forget('password_reset_approved_' . $request->email);
 
             return response()->json([
                 'success' => true,
