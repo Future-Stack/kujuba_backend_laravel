@@ -63,9 +63,9 @@ class RescheduleBookingRequestController extends Controller
                     'isReschedule' => 1
                 ]);
 
-            InspectionBooking::where('id', $request->inspection_booking_id)->update([
-                'isRescheduled' => 1
-            ]);
+//            InspectionBooking::where('id', $request->inspection_booking_id)->update([
+//                'isRescheduled' => 1
+//            ]);
 
 
             DB::commit();

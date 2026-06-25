@@ -313,6 +313,53 @@ class InspectionBookingRequestCotroller extends Controller
         }
     }
 
+    public function rescheduleBookingList(Request $request)
+    {
+        try {
+            $filter = $request->query('filter');
+            $user = Auth::user();
+
+            // Base query with relationships
+            $query = InspectionAssign::with([
+                'inspectionBooking:id,homeowner_id,property_address,property_type,property_img,scheduled_date,scheduled_time,urgent_status,status',
+                'inspectionBooking.inspectionTypes:id,title',
+                'inspector:id,first_name,last_name',
+            ])
+                ->where('status', $filter)
+                ->latest();
+
+
+            $inspections = $query->get()->map(function ($assign) {
+                $booking = $assign->inspectionBooking;
+                return [
+                    'id'                => $assign->id,
+                    'booking_id'        => $booking->id,
+                    'inspection_type'   => $booking->inspectionTypes,
+                    'property_address'  => $booking->property_address,
+                    'property_type'     => $booking->property_type,
+                    'property_img'      => $booking->property_img,
+                    'scheduled_date'    => $booking->scheduled_date,
+                    'scheduled_time'    => $booking->scheduled_time,
+                    'urgent_status'     => $booking->urgent_status,
+                    'status'            => $assign->status,
+                    'inspector'         => $assign->inspector ? $assign->inspector->first_name.' '.$assign->inspector->last_name : null,
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data'    => $inspections,
+            ], 200);
+
+        } catch (\Exception $e) {
+            \Log::error('Upcoming inspections fetch failed: '.$e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve upcoming inspections.'
+            ], 500);
+        }
+    }
+
     public function inspectionDetails(string $id)
     {
         try {

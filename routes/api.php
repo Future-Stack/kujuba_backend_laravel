@@ -279,6 +279,7 @@ Route::prefix('admin/dashboard')->group(function () {
 
         //Status wise Inspections
         Route::get('/status-bookings',[InspectionBookingRequestCotroller::class, 'statusBookingList']);
+        Route::get('/reschedule-bookings-list',[InspectionBookingRequestCotroller::class, 'rescheduleBookingList']);
 
         //Inspection Details
         Route::get('/inspection-details/{id}', [InspectionBookingRequestCotroller::class, 'inspectionDetails']);
