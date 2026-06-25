@@ -165,6 +165,7 @@ Route::prefix('v1')->group(function () {
 
             Route::post('/{id}/archive', [AdminInspectionReportController::class, 'archive']);
             Route::post('/{id}/favorite', [AdminInspectionReportController::class, 'toggleFavorite']);
+            Route::post('/{id}/restore', [AdminInspectionReportController::class, 'restore']);
         });
 
         //Homeowner report routes

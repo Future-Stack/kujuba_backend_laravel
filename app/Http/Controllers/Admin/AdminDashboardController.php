@@ -355,24 +355,16 @@ $topInspectionTypes = DB::table('booking_inspection_type as pivot')
                 'duration' => optional($item->created_at)->diffForHumans(),
             ]);
 
-                // =========================
-            // BAR CHART (DATE WISE)
+          
+           // =========================
+            // BAR CHART (ALL DATA)
             // =========================
-            $startDate = $request->start_date
-                ? Carbon::parse($request->start_date)
-                : now()->subDays(6);
-
-            $endDate = $request->end_date
-                ? Carbon::parse($request->end_date)
-                : now();
-
             $barChart = InspectionAssign::select(
                     DB::raw('DATE(created_at) as date'),
                     DB::raw("SUM(CASE WHEN status = 'assigned' THEN 1 ELSE 0 END) as assigned"),
                     DB::raw("SUM(CASE WHEN status = 'started' THEN 1 ELSE 0 END) as started"),
                     DB::raw("SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed")
                 )
-                ->whereBetween('created_at', [$startDate, $endDate])
                 ->groupBy(DB::raw('DATE(created_at)'))
                 ->orderBy('date')
                 ->get()
@@ -385,17 +377,37 @@ $topInspectionTypes = DB::table('booking_inspection_type as pivot')
                     ];
                 });
 
+
             // =========================
-            // CIRCLE CHART
+            // CIRCLE CHART (FILTERED)
             // =========================
+            $startDate = $request->start_date
+                ? Carbon::parse($request->start_date)->startOfDay()
+                : now()->subDays(6)->startOfDay();
+
+            $endDate = $request->end_date
+                ? Carbon::parse($request->end_date)->endOfDay()
+                : now()->endOfDay();
+
+            $circleQuery = InspectionAssign::whereBetween(
+                'created_at',
+                [$startDate, $endDate]
+            );
+
             $circleChart = [
-                'total_task' => InspectionAssign::count(),
+                'total_task' => (clone $circleQuery)->count(),
 
-                'assigned_inspection' => InspectionAssign::where('status', 'assigned')->count(),
+                'assigned_inspection' => (clone $circleQuery)
+                    ->where('status', 'assigned')
+                    ->count(),
 
-                'started_inspection' => InspectionAssign::where('status', 'started')->count(),
+                'started_inspection' => (clone $circleQuery)
+                    ->where('status', 'started')
+                    ->count(),
 
-                'completed_inspection' => InspectionAssign::where('status', 'completed')->count(),
+                'completed_inspection' => (clone $circleQuery)
+                    ->where('status', 'completed')
+                    ->count(),
             ];
         // =========================
         // RECENT ACTIVITY
