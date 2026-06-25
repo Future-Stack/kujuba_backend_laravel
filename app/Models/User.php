@@ -27,6 +27,7 @@ class User extends Authenticatable
         'status',
         'user_type',
         'device_token',
+        'email_verified_at'
     ];
 
     /**
