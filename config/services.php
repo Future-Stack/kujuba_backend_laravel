@@ -38,7 +38,7 @@ return [
     'stripe' => [
         'secret' => env('STRIPE_SECRET'),
         'publishable_key' => env('STRIPE_PUBLIC_KEY'),
-        'payout_webhook_secret'  => env('Payout_WEBHOOK_SECRET'),
+        'payout_webhook_secret'  => env('PAYOUT_WEBHOOK_SECRET'),
         'booking_webhook_secret' => env('WEBHOOK_SECRET'),
         'cancel_webhook_secret' => env('CANCEL_WEBHOOK_SECRET'),
     ],
