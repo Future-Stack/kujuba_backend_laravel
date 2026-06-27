@@ -25,12 +25,12 @@ class InspectionReportObserver
             return;
         }
 
-        // 🟡 1. SYNC assign status (safe)
+        //  1. SYNC assign status (safe)
         $assign->updateQuietly([
             'status' => $report->status
         ]);
 
-        // 🟢 only completed triggers payout
+        //  only completed triggers payout
         if ($report->status !== 'completed') {
             return;
         }
@@ -42,18 +42,18 @@ class InspectionReportObserver
             return;
         }
 
-        // 🚨 prevent duplicate payout
-        if ($payment->is_disbursed || $payment->status === 'processing') {
+        // prevent duplicate payout
+        if ($payment->is_disbursed || $payment->payout_status === 'processing') {
             Log::info("Already processing/paid payment ID: {$payment->id}");
             return;
         }
 
-        // 🔥 mark processing BEFORE queue
+        //  mark processing BEFORE queue
         $payment->updateQuietly([
-            'status' => 'processing'
+            'payout_status' => 'processing'
         ]);
 
-        // 🚀 dispatch job
+        //  dispatch job
         ProcessInspectorPayout::dispatch($assign->id);
 
         Log::info("Payout job dispatched", [

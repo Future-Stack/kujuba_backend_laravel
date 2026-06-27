@@ -111,6 +111,7 @@ class InspectionBookingRequestCotroller extends Controller
                 'admin_share' => $platformFee,
                 'urgent_fee' => $request->urgent_status ? $urgentFee : 0.00,
                 'total' => $total,
+                'payment_type' => 'inspection_fee',
                 'trx_id' => null,
                 'status' => 'pending',
                 'urgentStatus' => $request->urgent_status ? '1' : '0',
@@ -120,24 +121,19 @@ class InspectionBookingRequestCotroller extends Controller
                 'refunded_amount' => 0.00
             ]);
 
-            //Stripe Payment Flow
-
-            $stripe = new StripeClient(config('services.stripe.secret'));
+            // Stripe Payment Flow
+            $stripe = new \Stripe\StripeClient($stripeSecret);
 
             $paymentIntent = $stripe->paymentIntents->create([
                 'amount' => intval($total * 100), // cents
                 'currency' => 'usd',
-
                 'description' => 'Inspection Booking',
-
                 'metadata' => [
                     'type' => 'booking',
                     'booking_id' => $booking->id,
                     'booking_amount' => $total,
                     'payment_id' => $payment->id,
                 ],
-
-                // Enables cards, wallets, etc automatically
                 'automatic_payment_methods' => [
                     'enabled' => true,
                 ],
@@ -146,9 +142,7 @@ class InspectionBookingRequestCotroller extends Controller
             $payment->update([
                 'trx_id' => $paymentIntent->id,
                 'stripe_id' => $paymentIntent->id,
-
             ]);
-
 
             DB::commit();
 
@@ -163,21 +157,78 @@ class InspectionBookingRequestCotroller extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();
-
             return response()->json([
                 'success' => false,
                 'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
-
             Log::error('Booking Store Error: ' . $e->getMessage());
-
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create Booking.',
                 'error' => $e->getMessage(),
             ], 500);
+        }
+    }
+
+    public function handleWebhook(Request $request)
+    {
+        Log::info('Webhook Route Hit Successfully! Raw Payload: ' . $request->getContent());
+        $payload = $request->getContent();
+        $sigHeader = $request->header('Stripe-Signature');
+
+        try {
+            $event = \Stripe\Webhook::constructEvent(
+                $payload,
+                $sigHeader,
+                config('services.stripe.booking_webhook_secret')
+            );
+
+            Log::info('Stripe Webhook Received: ' . $event->type);
+
+            if ($event->type === 'payment_intent.succeeded') {
+                $intent = $event->data->object;
+                $paymentId = $intent->metadata->payment_id ?? null;
+                $bookingId = $intent->metadata->booking_id ?? null;
+
+                Log::info("Webhook Processing - Payment ID: " . $paymentId . " | Booking ID: " . $bookingId);
+
+                if ($paymentId) {
+                    $payment = InspectionPayment::find($paymentId);
+
+                    if ($payment && $payment->status !== 'paid') {
+                        $payment->update([
+                            'status' => 'paid',
+                        ]);
+
+                        if ($bookingId) {
+                            $booking = InspectionBooking::find($bookingId);
+                            if ($booking) {
+                                $booking->update([
+                                    'status' => 'confirmed'
+                                ]);
+                            }
+                        }
+                    }
+                }
+            }
+
+            $admin = User::where('user_type', 'admin')->first();
+            if ($admin) {
+                Notification::send($admin, new AdminIconNotification([
+                    'type'      => 'inspection_booking',
+                    'title'     => 'Inspection Booking',
+                    'message'   => 'A new Inspection Booking has been paid and created.',
+                    'sender_id' => null,
+                ]));
+            }
+
+            return response('OK', 200);
+
+        } catch (\Exception $e) {
+            Log::error('Webhook Structure/Process Error: ' . $e->getMessage());
+            return response('Webhook Error: ' . $e->getMessage(), 400);
         }
     }
 
@@ -199,7 +250,7 @@ class InspectionBookingRequestCotroller extends Controller
         ]);
     }
 
-    public function handleWebhook(Request $request)
+    public function hmmandleWebhook(Request $request)
     {
         $payload = $request->getContent();
         $sigHeader = $request->header('Stripe-Signature');

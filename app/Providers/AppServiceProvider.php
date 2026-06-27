@@ -20,7 +20,7 @@ class AppServiceProvider extends ServiceProvider
      * Bootstrap any application services.
      */
     public function boot(): void
-{
-    InspectionReport::observe(InspectionReportObserver::class);
-}
+    {
+        InspectionReport::observe(InspectionReportObserver::class);
+    }
 }

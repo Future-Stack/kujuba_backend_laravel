@@ -44,15 +44,15 @@ class ProcessInspectorPayout implements ShouldQueue
             return;
         }
 
-        // ✅ amount validation
-        $amountBDT = (float) $payment->inspector_share;
+        // amount validation
+        $payoutAmount = (float) $payment->inspector_share;
 
-        if ($amountBDT <= 0) {
+        if ($payoutAmount <= 0) {
             Log::warning("Invalid payout amount: {$payment->id}");
             return;
         }
 
-        // ✅ duplicate protection (VERY IMPORTANT)
+        // duplicate protection (VERY IMPORTANT)
         $alreadyPaid = InspectorPayout::where('inspection_assign_id', $assign->id)
             ->where('status', 'paid')
             ->exists();
@@ -63,12 +63,12 @@ class ProcessInspectorPayout implements ShouldQueue
         }
 
         try {
-            // 🟢 create payout record first
+            // create payout record first
             $payout = InspectorPayout::create([
                 'inspector_id' => $inspector->id,
                 'inspection_assign_id' => $assign->id,
                 'inspection_payment_id' => $payment->id,
-                'amount' => $amountBDT,
+                'amount' => $payoutAmount,
                 'platform_fee' => $payment->platform_fee ?? 0,
                 'currency' => $payment->currency ?? 'USD',
                 'status' => 'processing',
@@ -77,10 +77,10 @@ class ProcessInspectorPayout implements ShouldQueue
                 'calculated_at' => now(),
             ]);
 
-            // 🟢 Stripe init
+            // Stripe init
             $stripe = new StripeClient(config('services.stripe.secret'));
 
-            $amount = (int) round($amountBDT * 100);
+            $amount = (int) round($payoutAmount * 100);
 
             if ($amount <= 0) {
                 Log::warning("Stripe amount invalid after conversion: {$assign->id}");
@@ -88,7 +88,7 @@ class ProcessInspectorPayout implements ShouldQueue
                 return;
             }
 
-            // 🟢 Stripe transfer
+            // Stripe transfer
             $transfer = $stripe->transfers->create([
                 'amount' => $amount,
                 'currency' => strtolower($payout->currency),
@@ -96,7 +96,7 @@ class ProcessInspectorPayout implements ShouldQueue
                 'description' => 'Inspection payout #' . $assign->id,
             ]);
 
-            // 🟢 success update payout
+            // success update payout
             $payout->update([
                 'status' => 'paid',
                 'is_disbursed' => true,
@@ -105,11 +105,10 @@ class ProcessInspectorPayout implements ShouldQueue
                 'paid_at' => now(),
             ]);
 
-            // 🟢 sync payment
+            // sync payment
             $payment->update([
-                'status' => 'paid',
+                'payout_status' => 'paid',
                 'is_disbursed' => true,
-                'trx_id' => $transfer->id,
             ]);
 
             Log::info("Payout success", [
@@ -133,7 +132,7 @@ class ProcessInspectorPayout implements ShouldQueue
             }
 
             $payment->update([
-                'status' => 'failed',
+                'payout_status' => 'failed',
                 'is_disbursed' => false,
             ]);
         }

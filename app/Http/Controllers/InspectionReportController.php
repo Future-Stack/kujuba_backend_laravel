@@ -218,130 +218,132 @@ class InspectionReportController extends Controller
 
 
 
-public function saveReport(Request $request, $id)
-{
-    $request->validate([
-        'notes' => 'nullable|string',
-        'photos.*' => 'image|mimes:jpg,jpeg,png|max:5120',
-        'videos.*' => 'mimes:mp4,mov,avi|max:51200',
-        'report_file' => 'nullable|file|mimes:pdf,jpg,png|max:20480',
-        'action' => 'required|in:save,submit',
-    ]);
-
-    $report = InspectionReport::firstOrCreate([
-        'inspection_assign_id' => $id
-    ]);
-
-    if (in_array($report->status, ['completed', 'cancelled'])) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Report is locked'
-        ], 403);
-    }
-
-    // Save notes
-    if ($request->filled('notes')) {
-        $report->notes = $request->notes;
-    }
-
-    // Save media
-    $media = $report->media ?? [
-        'photos' => [],
-        'videos' => []
-    ];
-
-    if ($request->hasFile('photos')) {
-        foreach ($request->file('photos') as $photo) {
-            $media['photos'][] = $photo->store('inspection/photos', 'public');
-        }
-    }
-
-    if ($request->hasFile('videos')) {
-        foreach ($request->file('videos') as $video) {
-            $media['videos'][] = $video->store('inspection/videos', 'public');
-        }
-    }
-
-    $report->media = $media;
-
-    // Save report file
-    if ($request->hasFile('report_file')) {
-
-        if ($report->report_file) {
-            Storage::disk('public')->delete($report->report_file);
-        }
-
-        $report->report_file = $request->file('report_file')
-            ->store('inspection/reports', 'public');
-    }
-
-    $report->save();
-
-    /**
-     * FINAL SUBMIT
-     */
-    if ($request->action === 'submit') {
-
-        if ($report->expires_at && now()->greaterThan($report->expires_at)) {
+    public function saveReport(Request $request, $id)
+    {
+        // dd(config('database.connections.' . config('database.default') . '.database'));
+        $assignmentExists = DB::table('inspection_assigns')->where('id', $id)->exists();
+        if (!$assignmentExists) {
             return response()->json([
                 'success' => false,
-                'message' => '48 hours expired'
+                'message' => 'The provided inspection assignment ID does not exist.'
+            ], 404);
+        }
+
+        $request->validate([
+            'notes'       => 'nullable|string',
+            'photos.*'    => 'image|mimes:jpg,jpeg,png|max:5120',
+            'videos.*'    => 'mimes:mp4,mov,avi|max:51200',
+            'report_file' => 'nullable|file|mimes:pdf,jpg,png|max:20480',
+            'action'      => 'required|in:save,submit',
+        ]);
+
+        $report = InspectionReport::firstOrCreate([
+            'inspection_assign_id' => $id
+        ]);
+
+        if (in_array($report->status, ['completed', 'cancelled'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Report is locked'
             ], 403);
         }
 
-        if (empty($report->notes)) {
+        return DB::transaction(function () use ($request, $report) {
+            
+            if ($request->has('notes')) {
+                $report->notes = $request->notes;
+            }
+
+            $media = $report->media ?? [
+                'photos' => [],
+                'videos' => []
+            ];
+
+            if ($request->hasFile('photos')) {
+                foreach ($request->file('photos') as $photo) {
+                    $media['photos'][] = $photo->store('inspection/photos', 'public');
+                }
+            }
+
+            if ($request->hasFile('videos')) {
+                foreach ($request->file('videos') as $video) {
+                    $media['videos'][] = $video->store('inspection/videos', 'public');
+                }
+            }
+            $report->media = $media;
+
+            if ($request->hasFile('report_file')) {
+                if ($report->report_file) {
+                    Storage::disk('public')->delete($report->report_file);
+                }
+                $report->report_file = $request->file('report_file')->store('inspection/reports', 'public');
+            }
+
+            if ($request->action === 'submit') {
+                
+                if ($report->expires_at && now()->greaterThan($report->expires_at)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => '48 hours expired'
+                    ], 403);
+                }
+
+                if (empty($report->notes)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Notes is required'
+                    ], 400);
+                }
+
+                if (empty($media['photos']) && empty($media['videos'])) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'At least one photo or video is required'
+                    ], 400);
+                }
+
+                if (empty($report->report_file)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Report file is required'
+                    ], 400);
+                }
+
+                // স্ট্যাটাস মেমোরিতে পরিবর্তন করা
+                $report->status = 'completed';
+                $report->completed_at = now();
+            }
+
+            // ডাটাবেজে ফাইল ও স্ট্যাটাস একবারে (Single Save) রাইট করা
+            $report->save();
+
+            // সাবমিট সফল হলে নোটিফিকেশন পাঠানো
+            if ($request->action === 'submit') {
+                $admin = User::where('user_type', 'admin')->first();
+                if ($admin) {
+                    Notification::send($admin, new AdminIconNotification([
+                        'type'      => 'report_submitted',
+                        'title'     => 'Report submitted',
+                        'message'   => 'A new Report has been submitted',
+                        'sender_id' => null,
+                    ]));
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Inspection completed successfully',
+                    'data'    => $this->formatReport($report)
+                ]);
+            }
+
+            // ড্রাফট সেভ রেসপন্স
             return response()->json([
-                'success' => false,
-                'message' => 'Notes is required'
-            ], 400);
-        }
-
-        $media = $report->media ?? [];
-
-        if (empty($media['photos']) && empty($media['videos'])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'At least one photo or video is required'
-            ], 400);
-        }
-
-        if (empty($report->report_file)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Report file is required'
-            ], 400);
-        }
-
-        $report->update([
-            'status' => 'completed',
-            'completed_at' => now(),
-        ]);
-
-        $admin = User::where('user_type', 'admin')->first();
-
-        if ($admin) {
-            Notification::send($admin, new AdminIconNotification([
-                'type'      => 'report_submitted',
-                'title'     => 'Report submitted',
-                'message'   => 'A new Report has been submitted',
-                'sender_id' => null,
-            ]));
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Inspection completed successfully',
-            'data' => $this->formatReport($report)
-        ]);
+                'success' => true,
+                'message' => 'Draft saved successfully',
+                'data'    => $this->formatReport($report)
+            ]);
+        });
     }
-
-    // Draft Save
-    return response()->json([
-        'success' => true,
-        'message' => 'Draft saved successfully',
-        'data' => $this->formatReport($report)
-    ]);
-}
     /**
      * CANCEL
      */
