@@ -106,7 +106,8 @@ class AdminInspectionController extends Controller
 
                 case 'cancelled':
                     $query->whereHas('inspectionAssign', function ($q) {
-                        $q->where('status', 'cancelled');
+                        $q->where('status', 'cancelled')
+                        ->with('cancelRequest');
                     });
                     break;
 
@@ -118,9 +119,11 @@ class AdminInspectionController extends Controller
             $bookings = $query->get()->map(function ($booking) {
                 $assign = $booking->inspectionAssign;
                 $payment = $booking->payment;
+                $has_cancel_request = $booking->inspectionAssign->cancelRequest;
 
                 return [
                     'id'                => $booking->id,
+                    'inspection_assign_id' => $assign->id ?? null,
                     'inspection_types'  => $booking->inspectionTypes->pluck('title')->toArray(),
                     'property_address'  => $booking->property_address,
                     'property_type'     => $booking->property_type,
@@ -135,6 +138,7 @@ class AdminInspectionController extends Controller
                     'user_payment'      => $payment ? ucfirst($payment->status) : 'Unpaid',
                     'inspection_report' => $assign && $assign->status === 'completed' ? 'Submitted' : null,
                     'ins_payment'       => $assign && $assign->status === 'completed' ? 'Released' : null,
+                    'has_cancel_request' =>$has_cancel_request ?? null
                 ];
             });
 
