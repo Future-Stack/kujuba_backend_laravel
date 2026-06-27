@@ -163,95 +163,110 @@ public function show($id)
     }
 
 
-    public function stats()
-    {
-        $now = Carbon::now();
-        $lastMonth = Carbon::now()->subMonth();
+   public function stats(Request $request)
+{
+    $userType = $request->user_type; // homeowner / inspector
 
-        // ================= USERS (ONLY HOMEOWNERS) =================
-        $totalUsers = User::where('user_type', 'homeowner')->count();
+    $now = Carbon::now();
+    $lastMonth = Carbon::now()->subMonth();
 
-        $currentMonthUsers = User::where('user_type', 'homeowner')
-            ->whereMonth('created_at', $now->month)
-            ->whereYear('created_at', $now->year)
-            ->count();
+    // ================= TOTAL USERS =================
+    $totalUsers = User::where('user_type', $userType)->count();
 
-        $lastMonthUsers = User::where('user_type', 'homeowner')
-            ->whereMonth('created_at', $lastMonth->month)
-            ->whereYear('created_at', $lastMonth->year)
-            ->count();
+    $currentMonthUsers = User::where('user_type', $userType)
+        ->whereMonth('created_at', $now->month)
+        ->whereYear('created_at', $now->year)
+        ->count();
 
-        $userGrowth = $lastMonthUsers > 0
-            ? round((($currentMonthUsers - $lastMonthUsers) / $lastMonthUsers) * 100, 2)
-            : 100;
+    $lastMonthUsers = User::where('user_type', $userType)
+        ->whereMonth('created_at', $lastMonth->month)
+        ->whereYear('created_at', $lastMonth->year)
+        ->count();
 
-        // ================= ACTIVE INSPECTIONS =================
-        $activeInspections = InspectionAssign::whereIn('status', ['inspection', 'started'])->count();
+    $userGrowth = $lastMonthUsers > 0
+        ? round((($currentMonthUsers - $lastMonthUsers) / $lastMonthUsers) * 100, 2)
+        : ($currentMonthUsers > 0 ? 100 : 0);
 
-        $currentMonthActive = InspectionAssign::whereIn('status', ['inspection', 'started'])
-            ->whereMonth('created_at', $now->month)
-            ->whereYear('created_at', $now->year)
-            ->count();
+    // ================= ACTIVE USERS =================
+    $activeUsers = User::where('user_type', $userType)
+        ->where('status', 'active')
+        ->count();
 
-        $lastMonthActive = InspectionAssign::whereIn('status', ['inspection', 'started'])
-            ->whereMonth('created_at', $lastMonth->month)
-            ->whereYear('created_at', $lastMonth->year)
-            ->count();
+    $currentMonthActive = User::where('user_type', $userType)
+        ->where('status', 'active')
+        ->whereMonth('created_at', $now->month)
+        ->whereYear('created_at', $now->year)
+        ->count();
 
-        $activeGrowth = $lastMonthActive > 0
-            ? round((($currentMonthActive - $lastMonthActive) / $lastMonthActive) * 100, 2)
-            : 100;
+    $lastMonthActive = User::where('user_type', $userType)
+        ->where('status', 'active')
+        ->whereMonth('created_at', $lastMonth->month)
+        ->whereYear('created_at', $lastMonth->year)
+        ->count();
 
-        // ================= COMPLETED INSPECTIONS =================
-        $completedInspections = InspectionAssign::where('status', 'completed')->count();
+    $activeGrowth = $lastMonthActive > 0
+        ? round((($currentMonthActive - $lastMonthActive) / $lastMonthActive) * 100, 2)
+        : ($currentMonthActive > 0 ? 100 : 0);
 
-        $currentMonthCompleted = InspectionAssign::where('status', 'completed')
-            ->whereMonth('created_at', $now->month)
-            ->whereYear('created_at', $now->year)
-            ->count();
+    // ================= PENDING USERS =================
+    $pendingUsers = User::where('user_type', $userType)
+        ->where('status', 'pending')
+        ->count();
 
-        $lastMonthCompleted = InspectionAssign::where('status', 'completed')
-            ->whereMonth('created_at', $lastMonth->month)
-            ->whereYear('created_at', $lastMonth->year)
-            ->count();
+    $currentMonthPending = User::where('user_type', $userType)
+        ->where('status', 'pending')
+        ->whereMonth('created_at', $now->month)
+        ->whereYear('created_at', $now->year)
+        ->count();
 
-        $completedGrowth = $lastMonthCompleted > 0
-            ? round((($currentMonthCompleted - $lastMonthCompleted) / $lastMonthCompleted) * 100, 2)
-            : 100;
+    $lastMonthPending = User::where('user_type', $userType)
+        ->where('status', 'pending')
+        ->whereMonth('created_at', $lastMonth->month)
+        ->whereYear('created_at', $lastMonth->year)
+        ->count();
 
-        // ================= CANCELLED INSPECTIONS =================
-        $cancelledInspections = InspectionAssign::where('status', 'cancelled')->count();
+    $pendingGrowth = $lastMonthPending > 0
+        ? round((($currentMonthPending - $lastMonthPending) / $lastMonthPending) * 100, 2)
+        : ($currentMonthPending > 0 ? 100 : 0);
 
-        $currentMonthCancelled = InspectionAssign::where('status', 'cancelled')
-            ->whereMonth('created_at', $now->month)
-            ->whereYear('created_at', $now->year)
-            ->count();
+    // ================= SUSPENDED USERS =================
+    $suspendedUsers = User::where('user_type', $userType)
+        ->where('status', 'suspended')
+        ->count();
 
-        $lastMonthCancelled = InspectionAssign::where('status', 'cancelled')
-            ->whereMonth('created_at', $lastMonth->month)
-            ->whereYear('created_at', $lastMonth->year)
-            ->count();
+    $currentMonthSuspended = User::where('user_type', $userType)
+        ->where('status', 'suspended')
+        ->whereMonth('created_at', $now->month)
+        ->whereYear('created_at', $now->year)
+        ->count();
 
-        $cancelledGrowth = $lastMonthCancelled > 0
-            ? round((($currentMonthCancelled - $lastMonthCancelled) / $lastMonthCancelled) * 100, 2)
-            : 100;
+    $lastMonthSuspended = User::where('user_type', $userType)
+        ->where('status', 'suspended')
+        ->whereMonth('created_at', $lastMonth->month)
+        ->whereYear('created_at', $lastMonth->year)
+        ->count();
 
-        // ================= RESPONSE =================
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'total_homeowners' => $totalUsers,
-                'user_growth_percentage' => $userGrowth,
+    $suspendedGrowth = $lastMonthSuspended > 0
+        ? round((($currentMonthSuspended - $lastMonthSuspended) / $lastMonthSuspended) * 100, 2)
+        : ($currentMonthSuspended > 0 ? 100 : 0);
 
-                'active_inspections' => $activeInspections,
-                'active_growth_percentage' => $activeGrowth,
+    return response()->json([
+        'success' => true,
+        'data' => [
+            'user_type' => $userType,
 
-                'completed_inspections' => $completedInspections,
-                'completed_growth_percentage' => $completedGrowth,
+            'total_users' => $totalUsers,
+            'user_growth_percentage' => $userGrowth,
 
-                'cancelled_inspections' => $cancelledInspections,
-                'cancelled_growth_percentage' => $cancelledGrowth,
-            ]
-        ]);
-    }
+            'active_users' => $activeUsers,
+            'active_growth_percentage' => $activeGrowth,
+
+            'pending_users' => $pendingUsers,
+            'pending_growth_percentage' => $pendingGrowth,
+
+            'suspended_users' => $suspendedUsers,
+            'suspended_growth_percentage' => $suspendedGrowth,
+        ]
+    ]);
+}
 }
