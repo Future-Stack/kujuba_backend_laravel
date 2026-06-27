@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Booking;
 
 use App\Http\Controllers\Controller;
+use App\Models\CancelRequest;
 use App\Models\InspectionAssign;
 use App\Models\InspectionBooking;
 use App\Models\InspectionPayment;
@@ -626,6 +627,133 @@ class InspectionBookingRequestCotroller extends Controller
 
         } catch (\Exception $e) {
             return response('Webhook Error: ' . $e->getMessage(), 400);
+        }
+    }
+
+    public function inspectorCancelRequest(Request $request)
+    {
+        $request->validate([
+            'title'                => 'required|string|max:255',
+            'problem'              => 'required|string',
+            'inspection_assign_id' => 'required|integer|unique:cancel_requests,inspection_assign_id',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Create cancel request
+            $cancelRequest = CancelRequest::create([
+                'inspection_assign_id' => $request->inspection_assign_id,
+                'title'                => $request->title,
+                'problem'              => $request->problem,
+            ]);
+
+            // Update inspection assign status
+            InspectionAssign::where('id', $request->inspection_assign_id)->update([
+                'status' => 'cancelled',
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Cancel request submitted successfully.',
+                'data'    => $cancelRequest, // eager relation
+            ], 201);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to submit cancel request.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function declineInspectionRequest(Request $request)
+    {
+        $request->validate([
+            'inspection_assign_id' => 'required|integer|exists:inspection_assigns,id',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $assign = InspectionAssign::findOrFail($request->inspection_assign_id);
+
+            // Prevent duplicate decline
+            if ($assign->status === 'assigned') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This assignment is already marked as assigned.',
+                ], 400);
+            }
+
+            // Update assign status back to "assigned"
+            $assign->update([
+                'status' => 'assigned',
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Assign declined by admin and status reverted to assigned.',
+                'data'    => $assign,
+            ], 200);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to decline assign.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function acceptInspectionRequest(Request $request)
+    {
+        $request->validate([
+            'inspection_assign_id' => 'required|integer|exists:inspection_assigns,id',
+            'inspector_id' => 'required|integer|exists:users,id',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $assign = InspectionAssign::findOrFail($request->inspection_assign_id);
+
+          $assign->update([
+              'inspector_id' => $request->inspector_id,
+          ]);
+
+
+
+            // Update assign status to "accepted"
+            $assign->update([
+                'status' => 'assigned',
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Assign accepted successfully.',
+                'data' => $assign,
+            ], 200);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to accept assign.',
+                'error' => $e->getMessage(),
+            ], 500);
         }
     }
 }

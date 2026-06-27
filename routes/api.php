@@ -74,13 +74,17 @@ Route::prefix('v1')->group(function () {
 
         Route::post('/book-inspection', [InspectionBookingRequestCotroller::class, 'store']);
 
-        //Cancel Booking
+        //Cancel Booking (Homeowner Side)
         Route::post('/cancel-booking',[InspectionBookingRequestCotroller::class,'cancelBookingInspection']);
+
+        //Cancel Booking (inspector side)
+        Route::post('/inspector-cancel-request',[InspectionBookingRequestCotroller::class,'inspectorCancelRequest']);
+        Route::post('/admin/decline-inspector-cancel-request',[InspectionBookingRequestCotroller::class,'declineInspectionRequest']);
+        Route::post('/admin/accept-inspector-cancel-request',[InspectionBookingRequestCotroller::class,'acceptInspectionRequest']);
 
         Route::get('/my-inspections', [InspectionBookingController::class, 'index']);
 
         Route::post('/booking/complete/{bookingId}', [InspectionBookingController::class, 'completeInspectionAndPayout']);
-
 
 
 
