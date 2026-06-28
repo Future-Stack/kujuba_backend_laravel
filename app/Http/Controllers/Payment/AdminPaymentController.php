@@ -17,11 +17,14 @@ class AdminPaymentController extends Controller
                 ->where('status', 'paid')
                 ->sum('total');
 
-            $completedPayouts = InspectionPayment::where('status', 'paid')->where('payment_type', 'disbursement')
-                ->sum('inspector_share');
+//            $completedPayouts = InspectionPayment::where('status', 'paid')->where('payment_type', 'disbursement')
+//                ->sum('inspector_share');
+//
+//            $pendingPayouts = InspectionPayment::where('status', 'pending')->where('payment_type', 'disbursement')
+//                ->sum('inspector_share');
 
-            $pendingPayouts = InspectionPayment::where('status', 'pending')->where('payment_type', 'disbursement')
-                ->sum('inspector_share');
+            $totalPlatformFee = InspectionPayment::where('payment_type', 'inspection_fee')->where('status','paid')->sum('platform_fee');
+            $totalPaidHomeowner = InspectionPayment::where('payment_type', 'inspection_fee')->where('status','paid')->count();
 
             $totalRefunded = InspectionPayment::where('payment_type', 'refund')
                 ->sum('refunded_amount');
@@ -40,8 +43,8 @@ class AdminPaymentController extends Controller
                 'success' => true,
                 'data' => [
                     'total_revenue' => $totalRevenue,
-                    'completed_payouts' => $completedPayouts,
-                    'pending_payouts' => $pendingPayouts,
+                    'total_platformFee' => $totalPlatformFee,
+                    'total_paid_homeowner' => $totalPaidHomeowner,
                     'total_refunded' => $totalRefunded,
                     'growth_rate' => $growthRate,
                 ]
