@@ -537,7 +537,7 @@ class InspectionBookingRequestCotroller extends Controller
 
             $refund = $stripe->refunds->create([
                 'payment_intent' => $payment->stripe_id,
-                'amount'         => $refundAmount * 100, // cents
+                'amount'         => intval($refundAmount * 100) // cents
 
             ]);
 

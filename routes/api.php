@@ -258,6 +258,7 @@ Route::prefix('admin/dashboard')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         //Notification Preference
         Route::post('/notification-preference-save', [NotificationPreferenceController::class, 'notificationPreference']);
+        Route::get('/notification-preference-get', [NotificationPreferenceController::class, 'notificationPreferenceGet']);
         Route::get('/users/reviews', [InspectorReviewsController::class, 'index']);
         Route::get('/users/reviews/matrics', [InspectorReviewsController::class, 'reviewMatrics']);
 
