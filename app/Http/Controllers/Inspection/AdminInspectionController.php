@@ -20,14 +20,14 @@ class AdminInspectionController extends Controller
             $previousMonthStart = now()->subMonth()->startOfMonth();
             $previousMonthEnd = now()->subMonth()->endOfMonth();
 
-            // Current month counts
-            $activeCount     = InspectionAssign::whereIn('status', ['assigned', 'started', 'rescheduled'])->count();
+            // Current month counts, 'rescheduled']
+            $activeCount     = InspectionAssign::where('status', 'started')->count();
             $completedCount  = InspectionAssign::where('status', 'completed')->count();
             $cancelledCount  = InspectionAssign::where('status', 'cancelled')->count();
             $pendingCount    = InspectionBooking::where('status', 'pending')->count();
 
             // Previous month counts (for percentage comparison)
-            $activePrev     = InspectionAssign::whereIn('status', ['assigned', 'started', 'rescheduled'])
+            $activePrev     = InspectionAssign::where('status', 'started')
                 ->whereBetween('created_at', [$previousMonthStart, $previousMonthEnd])->count();
             $completedPrev  = InspectionAssign::where('status', 'completed')
                 ->whereBetween('created_at', [$previousMonthStart, $previousMonthEnd])->count();
@@ -106,7 +106,8 @@ class AdminInspectionController extends Controller
 
                 case 'cancelled':
                     $query->whereHas('inspectionAssign', function ($q) {
-                        $q->where('status', 'cancelled');
+                        $q->where('status', 'cancelled')
+                        ->with('cancelRequest');
                     });
                     break;
 
@@ -118,9 +119,11 @@ class AdminInspectionController extends Controller
             $bookings = $query->get()->map(function ($booking) {
                 $assign = $booking->inspectionAssign;
                 $payment = $booking->payment;
+                $has_cancel_request = $booking->inspectionAssign->cancelRequest ?? null;
 
                 return [
                     'id'                => $booking->id,
+                    'inspection_assign_id' => $assign->id ?? null,
                     'inspection_types'  => $booking->inspectionTypes->pluck('title')->toArray(),
                     'property_address'  => $booking->property_address,
                     'property_type'     => $booking->property_type,
@@ -135,6 +138,7 @@ class AdminInspectionController extends Controller
                     'user_payment'      => $payment ? ucfirst($payment->status) : 'Unpaid',
                     'inspection_report' => $assign && $assign->status === 'completed' ? 'Submitted' : null,
                     'ins_payment'       => $assign && $assign->status === 'completed' ? 'Released' : null,
+                    'has_cancel_request' =>$has_cancel_request ?? null
                 ];
             });
 
@@ -149,7 +153,7 @@ class AdminInspectionController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve inspection management data.'
+                'message' => $e->getMessage()
             ], 500);
         }
     }

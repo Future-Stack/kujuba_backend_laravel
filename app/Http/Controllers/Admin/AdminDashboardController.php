@@ -18,99 +18,154 @@ class AdminDashboardController extends Controller
         $now = now();
         $lastMonth = now()->subMonth();
 
-        // =========================
-        // BASIC STATS
-        // =========================
-        $totalRevenue = InspectionPayment::where('status', 'paid')
-    ->sum('total');
-        $totalUsers = User::where('user_type', 'homeowner')->count();
-        $totalInspectors = User::where('user_type', 'inspector')->count();
+       // =========================
+                // BASIC STATS
+                // =========================
 
-        $pendingApprovals = User::where('user_type', 'inspector')
-            ->where('status', 'pending')
-            ->count();
+                $totalRevenue = InspectionPayment::where('status', 'paid')->sum('total');
 
-        $activeInspections = InspectionAssign::whereIn('status', [
-            'assigned',
-            'inspection',
-            'in_progress'
-        ])->count();
+                $totalUsers = User::where('user_type', 'homeowner')->count();
 
-        $completedInspections = InspectionAssign::where('status', 'completed')->count();
-        $cancelledInspections = InspectionAssign::where('status', 'cancelled')->count();
-        $pendingInspections = InspectionAssign::where('status', 'pending')->count();
+                $totalInspectors = User::where('user_type', 'inspector')->count();
+
+                // Pending Inspector Approvals
+                $pendingInspectors = User::where('user_type', 'inspector')
+                    ->where('status', 'pending')
+                    ->count();
+
+                // Pending Booking Requests
+                $pendingInspections = InspectionBooking::where('status', 'pending')
+                    ->count();
+
+                $activeInspections = InspectionAssign::where('status', 'started')->count();
+
+                $completedInspections = InspectionAssign::where('status', 'completed')->count();
+
+                $cancelledInspections = InspectionAssign::where('status', 'cancelled')->count();
 
         // =========================
         // GROWTH HELPER USAGE
         // =========================
-        $revenueGrowth = $this->growth(
-            InspectionPayment::where('status', 'paid')
-                ->whereBetween('created_at', [
-                    now()->subMonth()->startOfMonth(),
-                    now()->subMonth()->endOfMonth()
-                ])
-                ->sum('total'),
-
-            InspectionPayment::where('status', 'paid')
-                ->whereBetween('created_at', [
-                    now()->startOfMonth(),
-                    now()->endOfMonth()
-                ])
-                ->sum('total')
-        );
-
-        $userGrowth = $this->growth(
-            User::whereMonth('created_at', $lastMonth->month)->count(),
-            User::whereMonth('created_at', $now->month)->count()
-        );
-
-        $inspectorGrowth = $this->growth(
-            User::where('user_type', 'inspector')->whereMonth('created_at', $lastMonth->month)->count(),
-            User::where('user_type', 'inspector')->whereMonth('created_at', $now->month)->count()
-        );
-
-        // =========================
-        // OTHER GROWTH (FIXED)
-        // =========================
-
-        $pendingApprovalGrowth = $this->growth(
-            User::where('user_type', 'inspector')->where('status', 'pending')
-                ->whereMonth('created_at', $lastMonth->month)->count(),
-            User::where('user_type', 'inspector')->where('status', 'pending')
-                ->whereMonth('created_at', $now->month)->count()
-        );
-
-        $activeGrowth = $this->growth(
-            InspectionAssign::whereIn('status', ['assigned','inspection','in_progress'])
-                ->whereMonth('created_at', $lastMonth->month)->count(),
-            InspectionAssign::whereIn('status', ['assigned','inspection','in_progress'])
-                ->whereMonth('created_at', $now->month)->count()
-        );
-
-        $completedGrowth = $this->growth(
-            InspectionAssign::where('status', 'completed')
-                ->whereMonth('created_at', $lastMonth->month)->count(),
-            InspectionAssign::where('status', 'completed')
-                ->whereMonth('created_at', $now->month)->count()
-        );
-
-        $cancelledGrowth = $this->growth(
-            InspectionAssign::where('status', 'cancelled')
-                ->whereMonth('created_at', $lastMonth->month)->count(),
-            InspectionAssign::where('status', 'cancelled')
-                ->whereMonth('created_at', $now->month)->count()
-        );
-
-        $pendingGrowth = $this->growth(
-            InspectionAssign::where('status', 'pending')
-                ->whereMonth('created_at', $lastMonth->month)->count(),
-            InspectionAssign::where('status', 'pending')
-                ->whereMonth('created_at', $now->month)->count()
-        );
+       // Pending Inspector Growth
 
 
+       $revenueGrowth = $this->growth(
+    InspectionPayment::where('status', 'paid')
+        ->whereBetween('created_at', [
+            $lastMonth->copy()->startOfMonth(),
+            $lastMonth->copy()->endOfMonth(),
+        ])
+        ->sum('total'),
 
-      
+    InspectionPayment::where('status', 'paid')
+        ->whereBetween('created_at', [
+            $now->copy()->startOfMonth(),
+            $now->copy()->endOfMonth(),
+        ])
+        ->sum('total')
+);
+
+
+$userGrowth = $this->growth(
+    User::where('user_type', 'homeowner')
+        ->whereMonth('created_at', $lastMonth->month)
+        ->count(),
+
+    User::where('user_type', 'homeowner')
+        ->whereMonth('created_at', $now->month)
+        ->count()
+);
+
+$inspectorGrowth = $this->growth(
+    User::where('user_type', 'inspector')
+        ->whereMonth('created_at', $lastMonth->month)
+        ->count(),
+
+    User::where('user_type', 'inspector')
+        ->whereMonth('created_at', $now->month)
+        ->count()
+);
+
+
+$pendingInspectorGrowth = $this->growth(
+    User::where('user_type', 'inspector')
+        ->where('status', 'pending')
+        ->whereMonth('created_at', $lastMonth->month)
+        ->count(),
+
+    User::where('user_type', 'inspector')
+        ->where('status', 'pending')
+        ->whereMonth('created_at', $now->month)
+        ->count()
+);
+
+// Pending Booking Growth
+$pendingInspectionGrowth = $this->growth(
+    InspectionBooking::where('status', 'pending')
+        ->whereMonth('created_at', $lastMonth->month)
+        ->count(),
+
+    InspectionBooking::where('status', 'pending')
+        ->whereMonth('created_at', $now->month)
+        ->count()
+);
+
+// Active Inspections Growth (Started)
+$activeGrowth = $this->growth(
+    InspectionAssign::where('status', 'started')
+        ->whereMonth('created_at', $lastMonth->month)
+        ->count(),
+
+    InspectionAssign::where('status', 'started')
+        ->whereMonth('created_at', $now->month)
+        ->count()
+);
+
+// Completed Inspections Growth
+$completedGrowth = $this->growth(
+    InspectionAssign::where('status', 'completed')
+        ->whereMonth('created_at', $lastMonth->month)
+        ->count(),
+
+    InspectionAssign::where('status', 'completed')
+        ->whereMonth('created_at', $now->month)
+        ->count()
+);
+
+// Cancelled Inspections Growth
+$cancelledGrowth = $this->growth(
+    InspectionAssign::where('status', 'cancelled')
+        ->whereMonth('created_at', $lastMonth->month)
+        ->count(),
+
+    InspectionAssign::where('status', 'cancelled')
+        ->whereMonth('created_at', $now->month)
+        ->count()
+);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
          
 $range = $request->get('range', 'weekly');
@@ -199,40 +254,47 @@ $financeChart = $labels->map(function ($label) use ($receiveData, $payoutData) {
 
 
 
-        // =========================
-        // RECENT USERS
-        // =========================
-        $recentUsers = User::with('profile')
-            ->latest()
-            ->take(5)
-            ->get()
-            ->map(fn($user) => [
-                'id' => $user->id,
-                'name' => trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')),
-                'email' => $user->email,
-                'status' => $user->status,
-                'profile' => [
-                    'phone' => $user->profile?->phone,
-                    'address' => $user->profile?->address,
-                    'avatar' => $user->profile?->avatar
-                        ? asset('storage/' . $user->profile->avatar)
-                        : null,
-                ],
-            ]);
+   
+// =========================
+// RECENT USERS
+// =========================
+$recentUsers = User::with('profile')
+    ->latest()
+    ->take(5)
+    ->get()
+    ->map(fn($user) => [
+        'id' => $user->id,
+        'name' => trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')),
+        'email' => $user->email,
+        'status' => $user->status,
+        'profile' => [
+            'phone' => $user->profile?->phone,
+            'address' => $user->profile?->address,
+            'avatar' => $user->profile?->profile_img
+                ? asset('storage/' . $user->profile->profile_img)
+                : null,
+        ],
+    ]);
+
+
 // =========================
 // TOP INSPECTORS
 // =========================
 $topInspectors = User::where('user_type', 'inspector')
+    ->where('status', 'active')
     ->with('profile')
-    ->withSum([
-        'inspectorPayouts as total_earnings' => function ($q) {
-            $q->where('status', 'paid');
-        }
-    ], 'amount')
-    ->orderByDesc('total_earnings')
-    ->take(5)
     ->get()
     ->map(function ($user) {
+
+        $totalEarnings = InspectionPayment::join(
+                'inspection_assigns',
+                'inspection_assigns.inspection_booking_id',
+                '=',
+                'inspection_payments.inspection_booking_id'
+            )
+            ->where('inspection_assigns.inspector_id', $user->id)
+            ->where('inspection_payments.status', 'paid')
+            ->sum('inspection_payments.inspector_share');
 
         return [
             'id' => $user->id,
@@ -240,13 +302,16 @@ $topInspectors = User::where('user_type', 'inspector')
             'profile' => [
                 'phone' => $user->profile?->phone,
                 'address' => $user->profile?->address,
-                'avatar' => $user->profile?->avatar
-                    ? asset('storage/' . $user->profile->avatar)
+                'avatar' => $user->profile?->profile_img
+                    ? asset('storage/' . $user->profile->profile_img)
                     : null,
             ],
-            'total_earnings' => (float) $user->total_earnings,
+            'total_earnings' => (float) $totalEarnings,
         ];
-    });
+    })
+    ->sortByDesc('total_earnings')
+    ->take(5)
+    ->values();
 
 
             // =========================
@@ -409,23 +474,30 @@ $topInspectionTypes = DB::table('booking_inspection_type as pivot')
                     ->where('status', 'completed')
                     ->count(),
             ];
+    
         // =========================
         // RECENT ACTIVITY
         // =========================
-        $recentActivity = InspectionAssign::with(['inspectionBooking','inspector'])
+        $recentActivity = InspectionAssign::with(['inspectionBooking', 'inspector'])
             ->latest()
             ->take(5)
             ->get()
             ->map(fn($item) => [
-                'title' => match($item->status) {
-                    'completed' => 'Inspection Completed',
-                    'in_progress' => 'Inspection Started',
-                    'assigned' => 'New Booking Received',
-                    'cancelled' => 'Cancellation Request',
-                    default => ucfirst($item->status)
+                'title' => match ($item->status) {
+                    'assigned'    => 'Inspector Assigned',
+                    'started'     => 'Inspection Started',
+                    'reports'     => 'Inspection Report Submitted',
+                    'completed'   => 'Inspection Completed',
+                    'cancelled'   => 'Inspection Cancelled',
+                    'rescheduled' => 'Inspection Rescheduled',
+                    default        => ucfirst($item->status),
                 },
-                'description' => ($item->inspectionBooking?->inspectionTypes?->first()?->title ?? 'Inspection')
-                    .' - '.trim(($item->inspector?->first_name ?? '').' '.($item->inspector?->last_name ?? '')),
+
+                'description' =>
+                    ($item->inspectionBooking?->inspectionTypes?->first()?->title ?? 'Inspection')
+                    . ' - ' .
+                    trim(($item->inspector?->first_name ?? '') . ' ' . ($item->inspector?->last_name ?? '')),
+
                 'time' => optional($item->created_at)->diffForHumans(),
             ]);
 
@@ -435,7 +507,7 @@ $topInspectionTypes = DB::table('booking_inspection_type as pivot')
         return response()->json([
             'success' => true,
             'data' => [
-                'stats' => [
+                  'stats' => [
                     'total_revenue' => (float) $totalRevenue,
                     'revenue_growth' => $revenueGrowth,
 
@@ -445,22 +517,26 @@ $topInspectionTypes = DB::table('booking_inspection_type as pivot')
                     'total_inspectors' => $totalInspectors,
                     'inspector_growth' => $inspectorGrowth,
 
-                    'pending_approvals' => $pendingApprovals,
-                    'pending_approval_growth' => $pendingApprovalGrowth,
+                    // Pending Inspector Approval
+                    'pending_inspectors' => $pendingInspectors,
+                    'pending_inspector_growth' => $pendingInspectorGrowth,
 
+                    // Pending Booking
+                    'pending_inspections' => $pendingInspections,
+                    'pending_inspection_growth' => $pendingInspectionGrowth,
+
+                    // Active
                     'active_inspections' => $activeInspections,
                     'active_growth' => $activeGrowth,
 
+                    // Completed
                     'completed_inspections' => $completedInspections,
                     'completed_growth' => $completedGrowth,
 
+                    // Cancelled
                     'cancelled_inspections' => $cancelledInspections,
                     'cancelled_growth' => $cancelledGrowth,
-
-                    'pending_inspections' => $pendingInspections,
-                    'pending_growth' => $pendingGrowth,
                 ],
-
                 'recent_users' => $recentUsers,
                 'top_inspectors' => $topInspectors,
                 'request_approvals' => $requestApprovals,

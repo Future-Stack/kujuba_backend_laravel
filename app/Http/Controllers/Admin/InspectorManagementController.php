@@ -183,10 +183,16 @@ public function show($id)
         ->count();
 
     // ================= EARNINGS (FIXED - REAL SOURCE) =================
-    $totalEarnings = \App\Models\InspectorPayout::where('inspector_id', $id)
-        ->where('status', 'paid')
-        ->sum('amount');
-
+ // ================= EARNINGS =================
+$totalEarnings = InspectionPayment::join(
+        'inspection_assigns',
+        'inspection_assigns.inspection_booking_id',
+        '=',
+        'inspection_payments.inspection_booking_id'
+    )
+    ->where('inspection_assigns.inspector_id', $id)
+    ->where('inspection_payments.status', 'paid')
+    ->sum('inspection_payments.inspector_share');
     // ================= RESPONSE =================
     return response()->json([
         'success' => true,

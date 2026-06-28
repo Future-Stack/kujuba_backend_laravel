@@ -53,4 +53,9 @@ class InspectionAssign extends Model
         return $this->hasOne(InspectionPayment::class, 'inspection_booking_id')
             ->where('payment_type', 'inspection_fee');
     }
+
+    public function cancelRequest()
+    {
+        return $this->hasOne(CancelRequest::class, 'inspection_assign_id');
+    }
 }

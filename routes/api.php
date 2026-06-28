@@ -74,13 +74,17 @@ Route::prefix('v1')->group(function () {
 
         Route::post('/book-inspection', [InspectionBookingRequestCotroller::class, 'store']);
 
-        //Cancel Booking
+        //Cancel Booking (Homeowner Side)
         Route::post('/cancel-booking',[InspectionBookingRequestCotroller::class,'cancelBookingInspection']);
+
+        //Cancel Booking (inspector side)
+        Route::post('/inspector-cancel-request',[InspectionBookingRequestCotroller::class,'inspectorCancelRequest']);
+        Route::post('/admin/decline-inspector-cancel-request',[InspectionBookingRequestCotroller::class,'declineInspectionRequest']);
+        Route::post('/admin/accept-inspector-cancel-request',[InspectionBookingRequestCotroller::class,'acceptInspectionRequest']);
 
         Route::get('/my-inspections', [InspectionBookingController::class, 'index']);
 
         Route::post('/booking/complete/{bookingId}', [InspectionBookingController::class, 'completeInspectionAndPayout']);
-
 
 
 
@@ -255,6 +259,7 @@ Route::prefix('admin/dashboard')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         //Notification Preference
         Route::post('/notification-preference-save', [NotificationPreferenceController::class, 'notificationPreference']);
+        Route::get('/notification-preference-get', [NotificationPreferenceController::class, 'notificationPreferenceGet']);
         Route::get('/users/reviews', [InspectorReviewsController::class, 'index']);
         Route::get('/users/reviews/matrics', [InspectorReviewsController::class, 'reviewMatrics']);
 

@@ -85,6 +85,10 @@ class InspectionBooking extends Model
     {
         return $this->belongsTo(User::class, 'homeowner_id');
     }
+    public function cancelRequest()
+    {
+        return $this->hasOne(CancelRequest::class, 'inspection_booking_id');
+    }
 
     // Media files (images, attachments)
 
