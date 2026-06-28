@@ -119,7 +119,7 @@ class AdminInspectionController extends Controller
             $bookings = $query->get()->map(function ($booking) {
                 $assign = $booking->inspectionAssign;
                 $payment = $booking->payment;
-                $has_cancel_request = $booking->inspectionAssign->cancelRequest;
+                $has_cancel_request = $booking->inspectionAssign->cancelRequest ?? null;
 
                 return [
                     'id'                => $booking->id,
@@ -153,7 +153,7 @@ class AdminInspectionController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve inspection management data.'
+                'message' => $e->getMessage()
             ], 500);
         }
     }
