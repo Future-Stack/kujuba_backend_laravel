@@ -45,7 +45,8 @@ class InspectionBookingRequestCotroller extends Controller
         $inspectionTypes = InspectionType::whereIn('id', $request->inspection_type_ids)->get();
         $subtotal = $inspectionTypes->sum('price');
 
-        $platformFee = Setting::first()->platform_commission ?? 20.00;
+        $platformFeeDigit = Setting::first()->platform_commission ?? 20.00;
+        $platformFee = $subtotal * ($platformFeeDigit / 100);
         $urgentFee = Setting::first()->urgent_inspection_fee ?? 50.00;
 
         if ($request->urgent_status) {
