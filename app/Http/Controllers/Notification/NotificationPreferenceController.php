@@ -42,4 +42,29 @@ class NotificationPreferenceController extends Controller
             ], 500);
         }
     }
+
+    public function notificationPreferenceGet()
+    {
+        try {
+            $userId = Auth::id(); // Sanctum authenticated user
+
+
+            $preferences = NotificationPreference::where('user_id', $userId)->first();
+
+            return response()->json([
+                'success' => true,
+                'data'    => $preferences,
+                'message' => 'Notification preferences fetched successfully'
+            ], 200);
+
+        } catch (\Exception $e) {
+            \Log::error('Failed to update notification preferences: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to update notification preferences'
+            ], 500);
+        }
+    }
+
 }
