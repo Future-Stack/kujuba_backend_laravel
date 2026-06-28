@@ -70,8 +70,15 @@ class User extends Authenticatable
         return $this->hasMany(InspectionBooking::class, 'homeowner_id');
     }
 
+    //no need at now
     public function inspectorPayouts()
 {
     return $this->hasMany(\App\Models\InspectorPayout::class, 'inspector_id');
+}
+
+
+public function inspectionPayments()
+{
+    return $this->hasMany(\App\Models\InspectionPayment::class, 'inspector_id');
 }
 }
