@@ -18,7 +18,7 @@ class StripeController extends Controller
         $this->stripe = new StripeClient(config('services.stripe.secret'));
     }
 
-    
+
     public function createConnectAccount($userId)
     {
         $user = User::with('profile')->findOrFail($userId);
@@ -92,8 +92,8 @@ class StripeController extends Controller
         try {
             $accountLink = $this->stripe->accountLinks->create([
                 'account'     => $user->profile->stripe_account_id,
-                'refresh_url' => url('/v1/stripe/refresh/' . $userId),
-                'return_url'  => url('/v1/stripe/success/' . $userId),
+                'refresh_url' => url('/api/v1/stripe/refresh/' . $userId),
+                'return_url'  => url('/api/v1/stripe/success/' . $userId),
                 'type'        => 'account_onboarding',
             ]);
 
@@ -119,7 +119,7 @@ class StripeController extends Controller
         }
     }
 
-    
+
     public function success($userId)
     {
         $user = User::with('profile')->findOrFail($userId);
@@ -226,7 +226,7 @@ class StripeController extends Controller
             $payoutsEnabled   = (bool) $account->payouts_enabled;
             $isComplete       = $detailsSubmitted && $payoutsEnabled;
 
-            // DB sync 
+            // DB sync
             $user->profile->update([
                 'stripe_onboarding_completed' => $isComplete ? 1 : 0,
             ]);
@@ -249,14 +249,14 @@ class StripeController extends Controller
     }
 
     // WEBHOOK
-    
+
     public function handleWebhook(Request $request)
     {
         $payload   = $request->getContent();
         $sigHeader = $request->header('Stripe-Signature');
-        $secret    = env('PAYOUT_WEBHOOK_SECRET');
+        $secret    = config('services.stripe.payout_webhook_secret') ?? env('PAYOUT_WEBHOOK_SECRET');
 
-        Log::info("Stripe Webhook HIT");
+        Log::info("Payout Webhook HIT");
 
         try {
             $event = \Stripe\Webhook::constructEvent($payload, $sigHeader, $secret);
