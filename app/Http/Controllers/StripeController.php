@@ -92,8 +92,8 @@ class StripeController extends Controller
         try {
             $accountLink = $this->stripe->accountLinks->create([
                 'account'     => $user->profile->stripe_account_id,
-                'refresh_url' => url('/api/v1/stripe/refresh/' . $userId),
-                'return_url'  => url('/api/v1/stripe/success/' . $userId),
+                'refresh_url' => url('/v1/stripe/refresh/' . $userId),
+                'return_url'  => url('/v1/stripe/success/' . $userId),
                 'type'        => 'account_onboarding',
             ]);
 
