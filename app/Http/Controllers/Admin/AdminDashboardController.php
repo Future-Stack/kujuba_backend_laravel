@@ -132,6 +132,7 @@ $completedGrowth = $this->growth(
         ->count()
 );
 
+
 // Cancelled Inspections Growth
 $cancelledGrowth = $this->growth(
     InspectionAssign::where('status', 'cancelled')
