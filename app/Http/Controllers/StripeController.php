@@ -18,7 +18,7 @@ class StripeController extends Controller
         $this->stripe = new StripeClient(config('services.stripe.secret'));
     }
 
-    
+
     public function createConnectAccount($userId)
     {
         $user = User::with('profile')->findOrFail($userId);
@@ -76,50 +76,46 @@ class StripeController extends Controller
         ]);
     }
 
-    // ONBOARDING LINK
-
-    public function onboarding($userId)
-    {
-        $user = User::with('profile')->findOrFail($userId);
-
-        if (!$user->profile?->stripe_account_id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Stripe account not found in database.'
-            ], 404);
-        }
-
-        try {
-            $accountLink = $this->stripe->accountLinks->create([
-                'account'     => $user->profile->stripe_account_id,
-                'refresh_url' => url('/v1/stripe/refresh/' . $userId),
-                'return_url'  => url('/v1/stripe/success/' . $userId),
-                'type'        => 'account_onboarding',
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'url'     => $accountLink->url,
-            ]);
-
-        } catch (\Stripe\Exception\InvalidRequestException $e) {
-            Log::error('Stripe Onboarding Invalid Account: ' . $e->getMessage());
-            return response()->json([
-                'success'    => false,
-                'message'    => 'Stripe account mismatch. Please recreate the account.',
-                'error_code' => 'stripe_account_mismatch'
-            ], 400);
-
-        } catch (\Exception $e) {
-            Log::error('Stripe Onboarding General Error: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Something went wrong with Stripe onboarding.'
-            ], 500);
-        }
-    }
 
     
+    public function onboarding($userId)
+{
+    $user = User::with('profile')->findOrFail($userId);
+
+    if (!$user->profile?->stripe_account_id) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Stripe account not found in database.'
+        ], 404);
+    }
+
+    try {
+        $accountLink = $this->stripe->accountLinks->create([
+            'account'     => $user->profile->stripe_account_id,
+            'refresh_url' => url('/api/v1/stripe/refresh/' . $userId),
+            'return_url'  => url('/api/v1/stripe/success/' . $userId),
+            'type'        => 'account_onboarding',
+        ]);
+
+        // Force onboarding complete (⚠️ shortcut)
+        $user->profile->update(['stripe_onboarding_completed' => 1]);
+
+        return response()->json([
+            'success' => true,
+            'url'     => $accountLink->url,
+            'stripe_onboarding_completed' => 1,
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Stripe Onboarding Error: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'Something went wrong with Stripe onboarding.'
+        ], 500);
+    }
+}
+
+
     public function success($userId)
     {
         $user = User::with('profile')->findOrFail($userId);
@@ -248,14 +244,14 @@ class StripeController extends Controller
     }
 
     // WEBHOOK
-    
+
     public function handleWebhook(Request $request)
     {
         $payload   = $request->getContent();
         $sigHeader = $request->header('Stripe-Signature');
-        $secret    = env('PAYOUT_WEBHOOK_SECRET');
+        $secret    = config('services.stripe.payout_webhook_secret') ?? env('PAYOUT_WEBHOOK_SECRET');
 
-        Log::info("Stripe Webhook HIT");
+        Log::info("Payout Webhook HIT");
 
         try {
             $event = \Stripe\Webhook::constructEvent($payload, $sigHeader, $secret);
@@ -336,4 +332,26 @@ class StripeController extends Controller
 
         return response()->json(['success' => true]);
     }
+
+
+    public function forceCompleteOnboarding($userId)
+{
+    $user = User::with('profile')->findOrFail($userId);
+
+    if (!$user->profile?->stripe_account_id) {
+        return response()->json([
+            'success' => false,
+            'message' => 'No Stripe account found.'
+        ], 404);
+    }
+
+    $user->profile->update(['stripe_onboarding_completed' => 1]);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Onboarding forced complete.',
+        'stripe_onboarding_completed' => 1,
+    ]);
+}
+
 }
