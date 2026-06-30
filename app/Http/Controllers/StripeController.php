@@ -227,9 +227,8 @@ class StripeController extends Controller
             $isComplete       = $detailsSubmitted && $payoutsEnabled;
 
             // DB sync 
-            $user->profile->update([
-                'stripe_onboarding_completed' => $isComplete ? 1 : 0,
-            ]);
+            Profile::where('user_id', $userId)
+                ->update(['stripe_onboarding_completed' => $isComplete ? 1 : 0]);
 
             return response()->json([
                 'success'                     => true,
