@@ -260,6 +260,8 @@ $financeChart = $labels->map(function ($label) use ($receiveData, $payoutData) {
 // RECENT USERS
 // =========================
 $recentUsers = User::with('profile')
+    ->where('user_type', 'homeowner')
+    ->where('status', 'active')
     ->latest()
     ->take(5)
     ->get()

@@ -122,8 +122,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/stripe/onboarding/{userId}', [StripeController::class, 'onboarding']);
         Route::get('/stripe/onboarding/status/{userId}', [StripeController::class, 'onboardingStatus']);
 
-        Route::get('/stripe/success', [StripeController::class, 'success']);
-        Route::get('/stripe/refresh', [StripeController::class, 'refresh']);
+        Route::get('/stripe/success/{$userId}', [StripeController::class, 'success']);
+        Route::get('/stripe/refresh/{$userId}', [StripeController::class, 'refresh']);
 
         // Stripe Webhook Handler
         Route::post('/stripe/webhook', [StripeController::class, 'handleWebhook']);
