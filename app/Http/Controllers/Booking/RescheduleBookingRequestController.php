@@ -125,9 +125,19 @@ class RescheduleBookingRequestController extends Controller
 
     public function acceptRequest(string $assign_id)
     {
-        try {
+        if (!Auth::check()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized. Please log in first.'
+            ], 401);
+        }
 
-            $reschedule = RescheduleInspection::where('inspection_assign_id', $assign_id)->first();
+        DB::beginTransaction();
+
+        try {
+            $reschedule = RescheduleInspection::where('inspection_assign_id', $assign_id)
+                ->latest()
+                ->first();
 
             if (!$reschedule) {
                 return response()->json([
@@ -136,19 +146,27 @@ class RescheduleBookingRequestController extends Controller
                 ], 404);
             }
 
-            // Update reschedule record
             $reschedule->update([
-                'status' => 'accepted',
+                'status'                => 'accepted',
                 'accepted_inspector_id' => Auth::id(),
             ]);
 
+            DB::table('inspection_assigns')
+                ->where('id', $assign_id)
+                ->update([
+                    'status' => 'assigned'
+                ]);
+
+            DB::commit();
+
             return response()->json([
                 'success' => true,
-                'message' => 'Reschedule request accepted successfully.',
+                'message' => 'Reschedule request accepted and assignment status updated successfully.',
                 'data'    => $reschedule
             ], 200);
 
         } catch (\Exception $e) {
+            DB::rollBack();
 
             return response()->json([
                 'success' => false,
