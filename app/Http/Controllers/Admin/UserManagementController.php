@@ -118,9 +118,13 @@ public function show($id)
 
             // STATS
             'total_inspections' => $user->inspectionBookings()->count(),
-            'cancelled_inspections' => $user->inspectionBookings()->where('status', 'cancelled')->count(),
-            'completed_inspections' => $user->inspectionBookings()->where('status', 'completed')->count(),
 
+           
+            'cancelled_inspections' => InspectionAssign::where('status', 'cancelled')
+                ->whereHas('inspectionBooking', function ($q) use ($user) {
+                    $q->where('homeowner_id', $user->id);
+                })
+                ->count(),
             // DATES (NEW)
             'created_at' => $user->created_at?->format('Y-m-d H:i:s'),
             'updated_at' => $user->updated_at?->format('Y-m-d H:i:s'),
