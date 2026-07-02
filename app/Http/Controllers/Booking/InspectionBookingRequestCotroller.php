@@ -51,7 +51,7 @@ class InspectionBookingRequestCotroller extends Controller
 
         if ($request->urgent_status) {
             $total = $subtotal + $urgentFee;
-            $inspector_share = ($subtotal - $platformFee)  + $urgentFee;
+            $inspector_share = ($subtotal - $platformFee) + $urgentFee;
         } else {
             $total = $subtotal;
             $inspector_share = $subtotal - $platformFee;
@@ -219,9 +219,9 @@ class InspectionBookingRequestCotroller extends Controller
             $admin = User::where('user_type', 'admin')->first();
             if ($admin) {
                 Notification::send($admin, new AdminIconNotification([
-                    'type'      => 'inspection_booking',
-                    'title'     => 'Inspection Booking',
-                    'message'   => 'A new Inspection Booking has been paid and created.',
+                    'type' => 'inspection_booking',
+                    'title' => 'Inspection Booking',
+                    'message' => 'A new Inspection Booking has been paid and created.',
                     'sender_id' => null,
                 ]));
             }
@@ -287,9 +287,9 @@ class InspectionBookingRequestCotroller extends Controller
             $admin = User::where('user_type', 'admin')->first();
             // Send notification to group or single user
             Notification::send($admin, new AdminIconNotification([
-                'type'      => 'inspection_booking',
-                'title'     => 'Inspection Booking',
-                'message'   => 'A new Inspection Booking has been created.',
+                'type' => 'inspection_booking',
+                'title' => 'Inspection Booking',
+                'message' => 'A new Inspection Booking has been created.',
                 'sender_id' => null,
             ]));
             return response('OK', 200);
@@ -307,7 +307,7 @@ class InspectionBookingRequestCotroller extends Controller
 
 
             // Base query with relationships
-            $query = InspectionBooking::with(['payment', 'inspectionTypes','reschedule'])
+            $query = InspectionBooking::with(['payment', 'inspectionTypes', 'reschedule'])
                 ->whereHas('payment', fn($q) => $q->where('status', 'paid'))
                 ->whereDoesntHave('declines', function ($q) use ($user) {
                     $q->where('inspector_id', $user->id);
@@ -328,12 +328,12 @@ class InspectionBookingRequestCotroller extends Controller
                 $payment = $booking->payment;
                 $reschedule = $booking->reschedule ?? null;
                 $type = $booking->inspectionTypes->pluck('title')->toArray();
-                $img =  $booking->inspectionTypes->pluck('img')->toArray();
-                $price  = $booking->inspectionTypes->pluck('price')->toArray();
+                $img = $booking->inspectionTypes->pluck('img')->toArray();
+                $price = $booking->inspectionTypes->pluck('price')->toArray();
 
                 return [
                     'id' => $booking->id,
-                    'inspection_img' =>$img,
+                    'inspection_img' => $img,
                     'inspection_type' => $type,
                     'inspection_price' => $price,
                     'property_address' => $booking->property_address,
@@ -388,27 +388,27 @@ class InspectionBookingRequestCotroller extends Controller
             $inspections = $query->get()->map(function ($assign) {
                 $booking = $assign->inspectionBooking;
                 return [
-                    'id'                => $assign->id,
-                    'booking_id'        => $booking->id,
-                    'inspection_type'   => $booking->inspectionTypes,
-                    'property_address'  => $booking->property_address,
-                    'property_type'     => $booking->property_type,
-                    'property_img'      => $booking->property_img,
-                    'scheduled_date'    => $booking->scheduled_date,
-                    'scheduled_time'    => $booking->scheduled_time,
-                    'urgent_status'     => $booking->urgent_status,
-                    'status'            => $assign->status,
-                    'inspector'         => $assign->inspector ? $assign->inspector->first_name.' '.$assign->inspector->last_name : null,
+                    'id' => $assign->id,
+                    'booking_id' => $booking->id,
+                    'inspection_type' => $booking->inspectionTypes,
+                    'property_address' => $booking->property_address,
+                    'property_type' => $booking->property_type,
+                    'property_img' => $booking->property_img,
+                    'scheduled_date' => $booking->scheduled_date,
+                    'scheduled_time' => $booking->scheduled_time,
+                    'urgent_status' => $booking->urgent_status,
+                    'status' => $assign->status,
+                    'inspector' => $assign->inspector ? $assign->inspector->first_name . ' ' . $assign->inspector->last_name : null,
                 ];
             });
 
             return response()->json([
                 'success' => true,
-                'data'    => $inspections,
+                'data' => $inspections,
             ], 200);
 
         } catch (\Exception $e) {
-            \Log::error('Upcoming inspections fetch failed: '.$e->getMessage());
+            \Log::error('Upcoming inspections fetch failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve upcoming inspections.'
@@ -419,7 +419,7 @@ class InspectionBookingRequestCotroller extends Controller
     public function inspectionDetails(string $id)
     {
         try {
-            $booking = InspectionBooking::with(['payment', 'inspectionTypes','inspectionAssign','reschedule'])
+            $booking = InspectionBooking::with(['payment', 'inspectionTypes', 'inspectionAssign', 'reschedule'])
                 ->findOrFail($id);
 
             $payment = $booking->payment;
@@ -427,51 +427,51 @@ class InspectionBookingRequestCotroller extends Controller
             $reschedule = $booking->reschedule;
 
             $response = [
-                'id'                => $booking->id,
-                'inspection_image'  => $booking->inspectionTypes->pluck('img')->toArray(),
-                'inspection_types'  => $booking->inspectionTypes->pluck('title')->toArray(),
-                'property_details'  => [
-                    'address'       => $booking->property_address,
-                    'type'          => $booking->property_type,
-                    'size'          => $booking->property_size,
-                    'latitude'      => $booking->latitude,
-                    'longitude'     => $booking->longitude,
+                'id' => $booking->id,
+                'inspection_image' => $booking->inspectionTypes->pluck('img')->toArray(),
+                'inspection_types' => $booking->inspectionTypes->pluck('title')->toArray(),
+                'property_details' => [
+                    'address' => $booking->property_address,
+                    'type' => $booking->property_type,
+                    'size' => $booking->property_size,
+                    'latitude' => $booking->latitude,
+                    'longitude' => $booking->longitude,
                 ],
-                'schedule'          => [
-                    'date'          => optional($booking->scheduled_date)->format('Y-m-d'),
-                    'time'          => $booking->scheduled_time,
-                    'shift'         => $booking->scheduled_shift,
+                'schedule' => [
+                    'date' => optional($booking->scheduled_date)->format('Y-m-d'),
+                    'time' => $booking->scheduled_time,
+                    'shift' => $booking->scheduled_shift,
                 ],
-                'reschedule'         => [
-                    'date'          => $reschedule->date ?? null,
-                    'time'          => $reschedule->time ?? null,
-                    'shift'         => $reschedule->shift ?? null,
-                    'status'        => $reschedule->status ?? null,
+                'reschedule' => [
+                    'date' => $reschedule->date ?? null,
+                    'time' => $reschedule->time ?? null,
+                    'shift' => $reschedule->shift ?? null,
+                    'status' => $reschedule->status ?? null,
                 ],
-                'Inspector Assigned' =>[
-                    'id'  =>    $assigned->id ?? null,
-                    'inspector_id' =>   $assigned->inspector_id ?? null,
-                    'Inspector_name' =>   $assigned->name ?? null,
+                'Inspector Assigned' => [
+                    'id' => $assigned->id ?? null,
+                    'inspector_id' => $assigned->inspector_id ?? null,
+                    'Inspector_name' => $assigned->name ?? null,
                 ],
                 'payment_breakdown' => [
                     'inspection_fee' => $payment ? number_format($payment->subtotal, 2) : null,
-                    'urgent_fee'     => $booking->urgent_status ? number_format(50, 2) : null,
-                    'total_payable'  => $payment ? number_format($payment->total, 2) : null,
-                    'status'         => $payment ? $payment->status : 'unpaid',
+                    'urgent_fee' => $booking->urgent_status ? number_format(50, 2) : null,
+                    'total_payable' => $payment ? number_format($payment->total, 2) : null,
+                    'status' => $payment ? $payment->status : 'unpaid',
                 ],
-                'note'              => $booking->note,
-                'urgent_status'     => $booking->urgent_status,
-                'status'            => $booking->status,
-                'property_img'      => $booking->property_img,
+                'note' => $booking->note,
+                'urgent_status' => $booking->urgent_status,
+                'status' => $booking->status,
+                'property_img' => $booking->property_img,
             ];
 
             return response()->json([
                 'success' => true,
-                'data'    => $response,
+                'data' => $response,
             ], 200);
 
         } catch (\Exception $e) {
-            \Log::error('Inspection details fetch failed: '.$e->getMessage());
+            \Log::error('Inspection details fetch failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
@@ -482,8 +482,8 @@ class InspectionBookingRequestCotroller extends Controller
     public function cancelBookingInspection(Request $request)
     {
         $request->validate([
-           'booking_id' => 'required',
-           'cancellation_notes' => 'nullable',
+            'booking_id' => 'required',
+            'cancellation_notes' => 'nullable',
         ]);
         try {
             DB::beginTransaction();
@@ -524,9 +524,9 @@ class InspectionBookingRequestCotroller extends Controller
                 } elseif ($hours < 24) {
                     $cancellationFee = $setting->late_cancellation_penalty ?? 50;
                 }
-                $admin_share = $cancellationFee/2;
+                $admin_share = $cancellationFee / 2;
                 $platform_fee = $admin_share;
-                $inspector_share = $cancellationFee/2;
+                $inspector_share = $cancellationFee / 2;
             }
 
             // Calculate refund amount (total minus fee)
@@ -537,27 +537,72 @@ class InspectionBookingRequestCotroller extends Controller
 
             $refund = $stripe->refunds->create([
                 'payment_intent' => $payment->stripe_id,
-                'amount'         => intval($refundAmount * 100) // cents
+                'amount' => intval($refundAmount * 100) // cents
 
             ]);
 
             // Create New Payment Table
             InspectionPayment::create([
                 'inspection_booking_id' => $booking->id,
-                'subtotal'              => $refundAmount,
-                'platform_fee'          => $platform_fee,
-                'urgent_fee'            => 0,
-                'inspector_share'       => $inspector_share,
-                'admin_share'           => $admin_share,
-                'total'                 => $refundAmount,
-                'payment_type'          => 'refund',
-                'trx_id'                => $refund->id, // Stripe refund ID
-                'status'                => 'pending',
-                'stripe_id'             => $payment->stripe_id, // original PaymentIntent ID
-                'penalty_amount'        => $cancellationFee,
-                'refunded_amount'       => $refundAmount,
-                'is_disbursed'          => false,
+                'subtotal' => $refundAmount,
+                'platform_fee' => $platform_fee,
+                'urgent_fee' => 0,
+                'inspector_share' => $inspector_share,
+                'admin_share' => $admin_share,
+                'total' => $refundAmount,
+                'payment_type' => 'refund',
+                'trx_id' => $refund->id, // Stripe refund ID
+                'status' => 'pending',
+                'stripe_id' => $payment->stripe_id, // original PaymentIntent ID
+                'penalty_amount' => $cancellationFee,
+                'refunded_amount' => $refundAmount,
+                'is_disbursed' => false,
             ]);
+
+            // ---- ADD THIS BLOCK ----
+            // Transfer inspector's share if booking was assigned and inspector has Connect account
+            if ($inspector_share > 0 && $booking->inspectionAssign) {
+
+                $inspector = $booking->inspectionAssign->inspector; // adjust relation name
+                $stripeAccountId = $inspector->profile?->stripe_account_id ?? null;
+
+                if ($stripeAccountId && $inspector->profile?->stripe_onboarding_completed) {
+                    try {
+                        $transfer = $stripe->transfers->create([
+                            'amount' => intval($inspector_share * 100), // cents
+                            'currency' => 'usd',
+                            'destination' => $stripeAccountId,
+                            'transfer_group' => 'booking_' . $booking->id,
+                            'metadata' => [
+                                'booking_id' => $booking->id,
+                                'type' => 'cancellation_fee_share',
+                                'inspector_share' => $inspector_share,
+                            ],
+                        ]);
+
+                        Log::info("Inspector share transferred", [
+                            'inspector_id' => $inspector->id,
+                            'amount' => $inspector_share,
+                            'transfer_id' => $transfer->id,
+                        ]);
+
+                    } catch (\Exception $e) {
+                        // Don't rollback — refund already succeeded
+                        // Just log it and handle manually
+                        Log::error("Inspector transfer failed: " . $e->getMessage(), [
+                            'booking_id' => $booking->id,
+                            'inspector_id' => $inspector->id,
+                            'amount' => $inspector_share,
+                        ]);
+                    }
+                } else {
+                    Log::warning("Inspector has no Stripe account — transfer skipped", [
+                        'inspector_id' => $inspector->id ?? null,
+                        'booking_id' => $booking->id,
+                    ]);
+                }
+            }
+// ---- END BLOCK ----
 
 
             DB::commit();
@@ -565,7 +610,7 @@ class InspectionBookingRequestCotroller extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Inspection cancelled. Refund initiated.',
-                'refund'  => $refund,
+                'refund' => $refund,
                 'cancellation_fee' => $cancellationFee,
                 'refunded_amount' => $refundAmount
             ], 200);
@@ -576,7 +621,7 @@ class InspectionBookingRequestCotroller extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to cancel inspection.',
-                'error'   => $e->getMessage()
+                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -615,12 +660,66 @@ class InspectionBookingRequestCotroller extends Controller
                     }
                 }
             }
+
+            //New Payout Block
+            // Transfer to inspector failed
+            if ($event->type === 'transfer.failed') {
+                $transfer = $event->data->object;
+                $bookingId = $transfer->metadata->booking_id ?? null;
+
+                Log::error("Inspector transfer FAILED", [
+                    'transfer_id' => $transfer->id,
+                    'booking_id' => $bookingId,
+                    'destination' => $transfer->destination,
+                ]);
+
+
+            }
+
+            // Inspector's bank received the money
+            if ($event->type === 'payout.paid') {
+                $payout = $event->data->object;
+                $bookingId = $transfer->metadata->booking_id ?? null;
+
+                Log::info("Payout landed in inspector bank", [
+                    'payout_id' => $payout->id,
+                    'amount' => $payout->amount / 100,
+                    'arrival' => $payout->arrival_date,
+                ]);
+
+                // Optional: notify inspector their payment arrived
+                // NotifyInspectorPaid::dispatch($payout->id);
+
+                $payment = InspectionPayment::where('inspection_booking_id ', $bookingId)
+                    ->where('payment_type', 'refund')
+                    ->first();
+
+                if ($payment) {
+                    if ($payment && $payment->status == 'paid') {
+                        $payment->update([
+                            'is_disbursed' => 1,
+                        ]);
+                    }
+                }
+            }
+
+            // Inspector payout to bank failed
+            if ($event->type === 'payout.failed') {
+                $payout = $event->data->object;
+
+                Log::error("Payout to inspector bank FAILED", [
+                    'payout_id' => $payout->id,
+                    'failure_code' => $payout->failure_code,
+                    'amount' => $payout->amount / 100,
+                ]);
+            }
+
             $admin = User::where('user_type', 'admin')->first();
 
             Notification::send($admin, new AdminIconNotification([
-                'type'      => 'cancelled_booking',
-                'title'     => 'Booking Inspection Cancelled',
-                'message'   => 'A new Inspection Booking has been Cancelled.',
+                'type' => 'cancelled_booking',
+                'title' => 'Booking Inspection Cancelled',
+                'message' => 'A new Inspection Booking has been Cancelled.',
                 'sender_id' => null,
             ]));
 
@@ -634,8 +733,8 @@ class InspectionBookingRequestCotroller extends Controller
     public function inspectorCancelRequest(Request $request)
     {
         $request->validate([
-            'title'                => 'required|string|max:255',
-            'problem'              => 'required|string',
+            'title' => 'required|string|max:255',
+            'problem' => 'required|string',
             'inspection_assign_id' => 'required|integer|unique:cancel_requests,inspection_assign_id',
         ]);
 
@@ -645,8 +744,8 @@ class InspectionBookingRequestCotroller extends Controller
             // Create cancel request
             $cancelRequest = CancelRequest::create([
                 'inspection_assign_id' => $request->inspection_assign_id,
-                'title'                => $request->title,
-                'problem'              => $request->problem,
+                'title' => $request->title,
+                'problem' => $request->problem,
             ]);
 
             // Update inspection assign status
@@ -659,7 +758,7 @@ class InspectionBookingRequestCotroller extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Cancel request submitted successfully.',
-                'data'    => $cancelRequest, // eager relation
+                'data' => $cancelRequest, // eager relation
             ], 201);
 
         } catch (\Throwable $e) {
@@ -668,7 +767,7 @@ class InspectionBookingRequestCotroller extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to submit cancel request.',
-                'error'   => $e->getMessage(),
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -702,7 +801,7 @@ class InspectionBookingRequestCotroller extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Assign declined by admin and status reverted to assigned.',
-                'data'    => $assign,
+                'data' => $assign,
             ], 200);
 
         } catch (\Throwable $e) {
@@ -711,7 +810,7 @@ class InspectionBookingRequestCotroller extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to decline assign.',
-                'error'   => $e->getMessage(),
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -728,10 +827,9 @@ class InspectionBookingRequestCotroller extends Controller
 
             $assign = InspectionAssign::findOrFail($request->inspection_assign_id);
 
-          $assign->update([
-              'inspector_id' => $request->inspector_id,
-          ]);
-
+            $assign->update([
+                'inspector_id' => $request->inspector_id,
+            ]);
 
 
             // Update assign status to "accepted"
