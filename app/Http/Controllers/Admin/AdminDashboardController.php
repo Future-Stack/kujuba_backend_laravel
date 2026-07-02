@@ -167,42 +167,69 @@ $cancelledGrowth = $this->growth(
 
 
 
-
+//Finance Insights
          
 $range = $request->get('range', 'weekly');
+
+$customDate = $request->filled('start_date') && $request->filled('end_date');
 
 // =========================
 // DATE RANGE
 // =========================
-if ($range == 'monthly') {
-    $start = now()->startOfMonth();
-    $end = now()->endOfMonth();
-} elseif ($range == 'yearly') {
-    $start = now()->startOfYear();
-    $end = now()->endOfYear();
+if ($customDate) {
+
+    $start = \Carbon\Carbon::parse($request->start_date)->startOfDay();
+    $end = \Carbon\Carbon::parse($request->end_date)->endOfDay();
+
 } else {
-    $start = now()->startOfWeek();
-    $end = now()->endOfWeek();
+
+    switch ($range) {
+        case 'monthly':
+            $start = now()->startOfMonth();
+            $end = now()->endOfMonth();
+            break;
+
+        case 'yearly':
+            $start = now()->startOfYear();
+            $end = now()->endOfYear();
+            break;
+
+        default:
+            $start = now()->startOfWeek();
+            $end = now()->endOfWeek();
+            break;
+    }
 }
+
+// =========================
+// LABEL FORMAT
+// =========================
+$receiveLabel = (!$customDate && $range == 'weekly')
+    ? 'DAYNAME(created_at)'
+    : 'DATE(created_at)';
+
+$payoutLabel = (!$customDate && $range == 'weekly')
+    ? 'DAYNAME(paid_at)'
+    : 'DATE(paid_at)';
 
 // =========================
 // FINANCE METRICS
 // =========================
 $financeMetrics = [
-    'receive_payment' => (float) \App\Models\InspectionPayment::where('status', 'paid')->sum('total'),
+    'receive_payment' => (float) \App\Models\InspectionPayment::where('status', 'paid')
+        ->whereBetween('created_at', [$start, $end])
+        ->sum('total'),
 
-    'payout' => (float) \App\Models\InspectorPayout::where('status', 'paid')->sum('amount'),
+    'payout' => (float) \App\Models\InspectorPayout::where('status', 'paid')
+        ->whereBetween('paid_at', [$start, $end])
+        ->sum('amount'),
 ];
 
-
 // =========================
-// RECEIVE CHART (Payments)
+// RECEIVE CHART
 // =========================
 $receiveData = \App\Models\InspectionPayment::select(
-        DB::raw($range == 'monthly'
-            ? 'DATE(created_at) as label'
-            : 'DAYNAME(created_at) as label'
-        ),
+        DB::raw("$receiveLabel as label"),
         DB::raw('SUM(total) as receive')
     )
     ->where('status', 'paid')
@@ -211,26 +238,21 @@ $receiveData = \App\Models\InspectionPayment::select(
     ->get()
     ->keyBy('label');
 
-
 // =========================
-// PAYOUT CHART (Inspector)
+// PAYOUT CHART
 // =========================
 $payoutData = \App\Models\InspectorPayout::select(
-        DB::raw($range == 'monthly'
-            ? 'DATE(created_at) as label'
-            : 'DAYNAME(created_at) as label'
-        ),
+        DB::raw("$payoutLabel as label"),
         DB::raw('SUM(amount) as payout')
     )
     ->where('status', 'paid')
-    ->whereBetween('created_at', [$start, $end])
+    ->whereBetween('paid_at', [$start, $end])
     ->groupBy('label')
     ->get()
     ->keyBy('label');
 
-
 // =========================
-// MERGED CHART (FINAL OUTPUT)
+// MERGED CHART
 // =========================
 $labels = $receiveData->keys()
     ->merge($payoutData->keys())
@@ -243,15 +265,7 @@ $financeChart = $labels->map(function ($label) use ($receiveData, $payoutData) {
         'receive' => (float) ($receiveData[$label]->receive ?? 0),
         'payout' => (float) ($payoutData[$label]->payout ?? 0),
     ];
-});
-
-
-
-
-
-
-
-
+})->values();
 
 
 
@@ -260,6 +274,8 @@ $financeChart = $labels->map(function ($label) use ($receiveData, $payoutData) {
 // RECENT USERS
 // =========================
 $recentUsers = User::with('profile')
+    ->where('user_type', 'homeowner')
+    ->where('status', 'active')
     ->latest()
     ->take(5)
     ->get()

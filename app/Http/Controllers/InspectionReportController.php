@@ -309,15 +309,12 @@ class InspectionReportController extends Controller
                     ], 400);
                 }
 
-                // স্ট্যাটাস মেমোরিতে পরিবর্তন করা
                 $report->status = 'completed';
                 $report->completed_at = now();
             }
 
-            // ডাটাবেজে ফাইল ও স্ট্যাটাস একবারে (Single Save) রাইট করা
             $report->save();
 
-            // সাবমিট সফল হলে নোটিফিকেশন পাঠানো
             if ($request->action === 'submit') {
                 $admin = User::where('user_type', 'admin')->first();
                 if ($admin) {
@@ -336,7 +333,6 @@ class InspectionReportController extends Controller
                 ]);
             }
 
-            // ড্রাফট সেভ রেসপন্স
             return response()->json([
                 'success' => true,
                 'message' => 'Draft saved successfully',
