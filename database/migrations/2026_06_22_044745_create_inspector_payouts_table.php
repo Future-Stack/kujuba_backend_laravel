@@ -43,8 +43,8 @@ return new class extends Migration
                         ->default('pending');
 
                     // Type
-                    $table->enum('payment_type', ['disbursement', 'bonus', 'adjustment'])
-                        ->default('disbursement');
+                    $table->string('payment_type')
+                        ->default('inspection_fee');
 
                     // Method
                     $table->enum('method', ['stripe', 'bank', 'cash', 'manual'])
