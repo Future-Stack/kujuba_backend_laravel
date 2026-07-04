@@ -93,8 +93,7 @@ json"stripe": {
 
 ## Step 2 — Confirm Payment (simulates frontend)
 ```bash
-stripe payment_intents confirm pi_xxxxxxxx --payment-method pm_card_visa 
---return-url https://localhost
+stripe payment_intents confirm pi_xxxxxxxx --payment-method pm_card_visa --return-url https://localhost
 ```
 ## Watch Terminal 3 — should show:
 ```

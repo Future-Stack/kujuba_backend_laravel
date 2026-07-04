@@ -662,24 +662,10 @@ class InspectionBookingRequestCotroller extends Controller
             }
 
             //New Payout Block
-            // Transfer to inspector failed
-            if ($event->type === 'transfer.failed') {
-                $transfer = $event->data->object;
-                $bookingId = $transfer->metadata->booking_id ?? null;
-
-                Log::error("Inspector transfer FAILED", [
-                    'transfer_id' => $transfer->id,
-                    'booking_id' => $bookingId,
-                    'destination' => $transfer->destination,
-                ]);
-
-
-            }
-
             // Inspector's bank received the money
-            if ($event->type === 'payout.paid') {
+            if ($event->type === 'transfer.created') {
                 $payout = $event->data->object;
-                $bookingId = $transfer->metadata->booking_id ?? null;
+                $bookingId = $payout->metadata->booking_id ?? null;
 
                 Log::info("Payout landed in inspector bank", [
                     'payout_id' => $payout->id,
@@ -690,7 +676,7 @@ class InspectionBookingRequestCotroller extends Controller
                 // Optional: notify inspector their payment arrived
                 // NotifyInspectorPaid::dispatch($payout->id);
 
-                $payment = InspectionPayment::where('inspection_booking_id ', $bookingId)
+                $payment = InspectionPayment::where('inspection_booking_id', $bookingId)
                     ->where('payment_type', 'refund')
                     ->first();
 
@@ -703,16 +689,6 @@ class InspectionBookingRequestCotroller extends Controller
                 }
             }
 
-            // Inspector payout to bank failed
-            if ($event->type === 'payout.failed') {
-                $payout = $event->data->object;
-
-                Log::error("Payout to inspector bank FAILED", [
-                    'payout_id' => $payout->id,
-                    'failure_code' => $payout->failure_code,
-                    'amount' => $payout->amount / 100,
-                ]);
-            }
 
             $admin = User::where('user_type', 'admin')->first();
 
