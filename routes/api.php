@@ -180,8 +180,8 @@ Route::prefix('v1')->group(function () {
             Route::post('/homeowner/reports/{id}/note', [InspectionReportController::class, 'homeownerNote']);
 
             Route::get('/homeowner/reports/{id}/share', [InspectionReportController::class, 'shareReport']);
-
-
+        // Stripe Account Details
+        Route::get('/account-details/{userId}', [StripeController::class, 'getAccountDetails']);
 
         //Admin user  dashbaord route
 
