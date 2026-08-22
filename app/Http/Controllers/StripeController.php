@@ -306,4 +306,45 @@ class StripeController extends Controller
 
         return response()->json(['success' => true]);
     }
+
+
+    public function getAccountDetails($userId)
+    {
+        $user = User::with('profile')->find($userId);
+
+        if (!$user || !$user->profile?->stripe_account_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stripe account not found for this user.'
+            ], 404);
+        }
+
+        try {
+            $stripe = new StripeClient(config('services.stripe.secret'));
+            
+            $accountId = $user->profile->stripe_account_id;
+            
+            $account = $stripe->accounts->retrieve($accountId, []);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'user_id'             => $user->id,
+                    'stripe_account_id'   => $account->id,
+                    'email'               => $account->email,
+                    'details_submitted'   => (bool) $account->details_submitted,
+                    'payouts_enabled'     => (bool) $account->payouts_enabled,
+                    'charges_enabled'     => (bool) $account->charges_enabled,
+                    'external_accounts'   => $account->external_accounts?->data ?? [],
+                    'requirements'        => $account->requirements?->currently_due ?? [],
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stripe execution failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
