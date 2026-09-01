@@ -76,7 +76,7 @@ class UserSeeder extends Seeder
                 'license_expiry' => now()->addYear(),
                 'insurance_expiry' => now()->addYear(),
                 'stripe_onboarding_completed' => 1,
-                'stripe_account_id' =>'acct_1TkglDFlBbC7u2Vb'
+                'stripe_account_id' =>'acct_1TnXRbQK0udB5Dtn'
             ]
         );
 

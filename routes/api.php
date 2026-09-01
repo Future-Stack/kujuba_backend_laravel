@@ -42,6 +42,13 @@ Route::prefix('v1')->group(function () {
         ]);
     });
 
+    Route::get('/clear', function () {
+        Artisan::call('optimize:clear');
+        return response()->json([
+            'success' => true,
+            'message' => 'Application cache cleared successfully!',
+        ]);
+    });
     // ----------------------------
     // Public Routes
     // ----------------------------
@@ -122,8 +129,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/stripe/onboarding/{userId}', [StripeController::class, 'onboarding']);
         Route::get('/stripe/onboarding/status/{userId}', [StripeController::class, 'onboardingStatus']);
 
-        Route::get('/stripe/success/{$userId}', [StripeController::class, 'success']);
-        Route::get('/stripe/refresh/{$userId}', [StripeController::class, 'refresh']);
+        Route::get('/stripe/success/{userId}', [StripeController::class, 'success']);
+        Route::get('/stripe/refresh/{userId}', [StripeController::class, 'refresh']);
 
         // Stripe Webhook Handler
         Route::post('/stripe/webhook', [StripeController::class, 'handleWebhook']);
@@ -180,8 +187,8 @@ Route::prefix('v1')->group(function () {
             Route::post('/homeowner/reports/{id}/note', [InspectionReportController::class, 'homeownerNote']);
 
             Route::get('/homeowner/reports/{id}/share', [InspectionReportController::class, 'shareReport']);
-
-
+        // Stripe Account Details
+        Route::get('/account-details/{userId}', [StripeController::class, 'getAccountDetails']);
 
         //Admin user  dashbaord route
 
