@@ -190,10 +190,13 @@ Route::prefix('v1')->group(function () {
             Route::get('/dashboard-stats', [UserManagementController::class, 'stats']);
 
             Route::get('/', [UserManagementController::class, 'index']);
+            Route::post('/', [UserManagementController::class, 'store']);
             Route::get('/{id}', [UserManagementController::class, 'show']);
 
             Route::post('/{id}/suspend', [UserManagementController::class, 'suspend']);
             Route::post('/{id}/unsuspend', [UserManagementController::class, 'unsuspend']);
+            Route::delete('/{id}', [UserManagementController::class, 'destroy']);
+            Route::match(['post', 'delete'], '/{id}/delete', [UserManagementController::class, 'destroy']);
 
         });
 
