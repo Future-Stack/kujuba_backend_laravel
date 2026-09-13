@@ -77,8 +77,13 @@ class User extends Authenticatable
 }
 
 
-public function inspectionPayments()
-{
-    return $this->hasMany(\App\Models\InspectionPayment::class, 'inspector_id');
-}
+    public function inspectionPayments()
+    {
+        return $this->hasMany(\App\Models\InspectionPayment::class, 'inspector_id');
+    }
+
+    public function clientBookings()
+    {
+        return $this->hasMany(InspectionBooking::class, 'client_id');
+    }
 }

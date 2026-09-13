@@ -27,6 +27,8 @@ use App\Http\Controllers\Admin\AdminInspectionReportController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\InspectorManagementController;
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\ClientManagementController;
+use App\Http\Controllers\Admin\AdminClientReportController;
 use App\Http\Controllers\StripeController;
 use App\Http\Controllers\InspectorPaymentHistoryController;
 
@@ -223,6 +225,29 @@ Route::prefix('v1')->group(function () {
         Route::post('/{id}/suspend', [InspectorManagementController::class, 'suspend']);
 
         Route::post('/{id}/reactivate', [InspectorManagementController::class, 'reactivate']);
+    });
+
+    // Admin Client Management Routes (Item 12: Realtors, Insurance Companies, etc.)
+    Route::prefix('admin/clients')->group(function () {
+        Route::get('/stats', [ClientManagementController::class, 'stats']);
+        Route::get('/', [ClientManagementController::class, 'index']);
+        Route::post('/', [ClientManagementController::class, 'store']);
+        Route::get('/{id}', [ClientManagementController::class, 'show']);
+        Route::match(['put', 'post'], '/{id}/update', [ClientManagementController::class, 'update']);
+        Route::post('/{id}/suspend', [ClientManagementController::class, 'suspend']);
+        Route::post('/{id}/unsuspend', [ClientManagementController::class, 'unsuspend']);
+        Route::delete('/{id}', [ClientManagementController::class, 'destroy']);
+        Route::post('/{id}/link-bookings', [ClientManagementController::class, 'linkBookings']);
+    });
+
+    // Admin Client Automated/On-Demand Reports (Item 13: Daily & Weekly Reports)
+    Route::prefix('admin/client-reports')->group(function () {
+        Route::get('/clients-list', [AdminClientReportController::class, 'clientsList']);
+        Route::get('/generate', [AdminClientReportController::class, 'generate']);
+        Route::post('/generate', [AdminClientReportController::class, 'generate']);
+        Route::get('/download-pdf', [AdminClientReportController::class, 'downloadPdf']);
+        Route::post('/download-pdf', [AdminClientReportController::class, 'downloadPdf']);
+        Route::post('/send-email', [AdminClientReportController::class, 'sendEmail']);
     });
 
 //Admin dashbaord overview route

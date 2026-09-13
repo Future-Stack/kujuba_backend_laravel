@@ -10,6 +10,7 @@ class InspectionBooking extends Model
 
     protected $fillable = [
         'homeowner_id',
+        'client_id',
         'property_address',
         'property_type',
         'property_size',
@@ -25,6 +26,11 @@ class InspectionBooking extends Model
         'longitude',
         'isRescheduled'
     ];
+
+    public function client()
+    {
+        return $this->belongsTo(User::class, 'client_id');
+    }
 
     public function payment()
     {
