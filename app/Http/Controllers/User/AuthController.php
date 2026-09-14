@@ -32,13 +32,14 @@ class AuthController extends Controller
             $user->load(['profile.inspectionTypes']);
 
             $responseData = [
-                'id'         => $user->id,
-                'first_name' => $user->first_name,
-                'last_name'  => $user->last_name,
-                'email'      => $user->email,
-                'status'     => $user->status,
-                'user_type'  => $user->user_type, 
-                'profile'    => $user->profile ? [
+                'id'          => $user->id,
+                'first_name'  => $user->first_name,
+                'last_name'   => $user->last_name,
+                'email'       => $user->email,
+                'status'      => $user->status,
+                'user_type'   => $user->user_type, 
+                'permissions' => $user->permissions ?? [], 
+                'profile'     => $user->profile ? [
                     'id'                          => $user->profile->id,
                     'address'                     => $user->profile->address,
                     'phone'                       => $user->profile->phone,

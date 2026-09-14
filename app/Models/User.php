@@ -26,6 +26,7 @@ class User extends Authenticatable
         'otp_expire_at',
         'status',
         'user_type',
+        'permissions',
         'device_token',
         'email_verified_at'
     ];
@@ -51,7 +52,57 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'otp_expire_at' => 'datetime',
             'password' => 'hashed',
+            'permissions' => 'array',
         ];
+    }
+
+    /**
+     * Check if user is Super Admin
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->user_type === 'admin';
+    }
+
+    /**
+     * Check if user is In-House Admin
+     */
+    public function isInHouseAdmin(): bool
+    {
+        return $this->user_type === 'inhouse_admin';
+    }
+
+    /**
+     * Check if user has specific module/action permission
+     */
+    public function hasPermission(string $permission): bool
+    {
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        if (!$this->isInHouseAdmin()) {
+            return false;
+        }
+
+        if (!is_array($this->permissions)) {
+            return false;
+        }
+
+        // Direct match
+        if (in_array($permission, $this->permissions, true)) {
+            return true;
+        }
+
+        // Wildcard or module match (e.g. 'clients' or 'clients.*' matches 'clients.view')
+        $parts = explode('.', $permission);
+        $module = $parts[0];
+
+        if (in_array($module, $this->permissions, true) || in_array("{$module}.*", $this->permissions, true) || in_array('*', $this->permissions, true)) {
+            return true;
+        }
+
+        return false;
     }
 
     public function profile()
