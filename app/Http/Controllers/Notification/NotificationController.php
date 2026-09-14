@@ -21,7 +21,9 @@ class NotificationController extends Controller
                 'type'    => 'required|string|in:announcement,approval,alert,cancellation,update',
                 'title'   => 'required|string|max:255',
                 'message' => 'required|string',
-                'send_to' => 'required|string', // e.g. 'all_users', 'all_inspectors', 'all_homeowners',
+                'send_to' => 'required|string', // e.g. 'all_users', 'all_inspectors', 'all_homeowners','all_clients','custom'
+                'user_ids'    => 'required_if:send_to,custom|array',
+                'user_ids.*'  => 'exists:users,id',
             ]);
 
             $sender = Auth::user();
@@ -31,6 +33,8 @@ class NotificationController extends Controller
                 'all_users' => User::all(),
                 'all_inspectors' => User::where('user_type', 'inspector')->get(),
                 'all_homeowners' => User::where('user_type', 'homeowner')->get(),
+                'all_clients' => User::where('user_type', 'client')->get(),
+                'custom'         => User::whereIn('id', $validated['user_ids'])->get(),
                 default => User::where('id', str_replace('user_', '', $validated['send_to']))->get(),
             };
 
@@ -40,6 +44,7 @@ class NotificationController extends Controller
                 'title'     => $validated['title'],
                 'message'   => $validated['message'],
                 'sender_id' => $sender->id,
+                'sent_to_label' => $validated['send_to'],
             ]));
 
             return response()->json([
