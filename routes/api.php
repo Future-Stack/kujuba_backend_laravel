@@ -253,38 +253,38 @@ Route::prefix('v1')->group(function () {
     });
 
     // In-House Admin / Staff & Permission Management Routes (Super Admin Access Only)
-    Route::middleware('auth:sanctum')->group(function () {
-        foreach (['admin/inhouse-admins', 'inhouse-admins'] as $prefix) {
-            Route::prefix($prefix)->group(function () {
-                // 1. Permission List for Checkboxes
-                Route::get('/available-permissions', [InHouseAdminController::class, 'availablePermissions'])->name('inhouse-admins.permissions');
-                Route::get('/permissions-list', [InHouseAdminController::class, 'availablePermissions'])->name('inhouse-admins.permissions-list');
+  Route::middleware('auth:sanctum')->group(function () {
+    foreach (['admin/inhouse-admins' => 'admin.inhouse-admins.', 'inhouse-admins' => 'inhouse-admins.'] as $prefix => $namePrefix) {
+        Route::prefix($prefix)->name($namePrefix)->group(function () {
+            // 1. Permission List for Checkboxes
+            Route::get('/available-permissions', [InHouseAdminController::class, 'availablePermissions'])->name('permissions');
+            Route::get('/permissions-list', [InHouseAdminController::class, 'availablePermissions'])->name('permissions-list');
 
-                // 2. Statistics & Overview
-                Route::get('/stats', [InHouseAdminController::class, 'stats'])->name('inhouse-admins.stats');
+            // 2. Statistics & Overview
+            Route::get('/stats', [InHouseAdminController::class, 'stats'])->name('stats');
 
-                // 3. Admin List & Create
-                Route::get('/', [InHouseAdminController::class, 'index'])->name('inhouse-admins.index');
-                Route::get('/list', [InHouseAdminController::class, 'index'])->name('inhouse-admins.list');
-                Route::post('/', [InHouseAdminController::class, 'store'])->name('inhouse-admins.store');
-                Route::post('/create', [InHouseAdminController::class, 'store'])->name('inhouse-admins.create');
+            // 3. Admin List & Create
+            Route::get('/', [InHouseAdminController::class, 'index'])->name('index');
+            Route::get('/list', [InHouseAdminController::class, 'list'])->name('list'); // avoid duplicate action route name
+            Route::post('/', [InHouseAdminController::class, 'store'])->name('store');
+            Route::post('/create', [InHouseAdminController::class, 'create'])->name('create');
 
-                // 4. Single Admin Details & Update
-                Route::get('/{id}', [InHouseAdminController::class, 'show'])->name('inhouse-admins.show');
-                Route::match(['put', 'post'], '/{id}/update', [InHouseAdminController::class, 'update'])->name('inhouse-admins.update');
+            // 4. Single Admin Details & Update
+            Route::get('/{id}', [InHouseAdminController::class, 'show'])->name('show');
+            Route::match(['put', 'post'], '/{id}/update', [InHouseAdminController::class, 'update'])->name('update');
 
-                // 5. Dedicated Permission Assign / Update Route
-                Route::post('/{id}/assign-permissions', [InHouseAdminController::class, 'assignPermissions'])->name('inhouse-admins.assign-permissions');
-                Route::post('/{id}/update-permissions', [InHouseAdminController::class, 'assignPermissions'])->name('inhouse-admins.update-permissions');
+            // 5. Dedicated Permission Assign / Update Route
+            Route::post('/{id}/assign-permissions', [InHouseAdminController::class, 'assignPermissions'])->name('assign-permissions');
+            Route::post('/{id}/update-permissions', [InHouseAdminController::class, 'assignPermissions'])->name('update-permissions');
 
-                // 6. Status Management & Delete
-                Route::post('/{id}/suspend', [InHouseAdminController::class, 'suspend'])->name('inhouse-admins.suspend');
-                Route::post('/{id}/unsuspend', [InHouseAdminController::class, 'unsuspend'])->name('inhouse-admins.unsuspend');
-                Route::delete('/{id}', [InHouseAdminController::class, 'destroy'])->name('inhouse-admins.destroy');
-                Route::post('/{id}/delete', [InHouseAdminController::class, 'destroy'])->name('inhouse-admins.delete');
-            });
-        }
-    });
+            // 6. Status Management & Delete
+            Route::post('/{id}/suspend', [InHouseAdminController::class, 'suspend'])->name('suspend');
+            Route::post('/{id}/unsuspend', [InHouseAdminController::class, 'unsuspend'])->name('unsuspend');
+            Route::delete('/{id}', [InHouseAdminController::class, 'destroy'])->name('destroy');
+            Route::post('/{id}/delete', [InHouseAdminController::class, 'destroy'])->name('delete');
+        });
+    }
+});
 
 //Admin dashbaord overview route
 Route::prefix('admin/dashboard')->group(function () {
