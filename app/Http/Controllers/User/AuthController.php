@@ -42,6 +42,10 @@ class AuthController extends Controller
                 'profile'     => $user->profile ? [
                     'id'                          => $user->profile->id,
                     'address'                     => $user->profile->address,
+                    'zip_code'                    => $user->profile->zip_code,
+                    'latitude'                    => $user->profile->latitude ? (float) $user->profile->latitude : null,
+                    'longitude'                   => $user->profile->longitude ? (float) $user->profile->longitude : null,
+                    'service_radius'              => (float) ($user->profile->service_radius ?? 50.00),
                     'phone'                       => $user->profile->phone,
                     'profile_img'                 => $user->profile->profile_img
                                                         ? asset('storage/' . $user->profile->profile_img)
@@ -87,7 +91,12 @@ class AuthController extends Controller
             'email'                 => 'required|string|email|max:255|unique:users',
             'password'              => ['required', 'string', 'confirmed', Password::min(8)],
             'user_type'             => 'required|string|in:inspector,homeowner',
+            'device_token'          => 'nullable|string',
             'address'               => 'nullable|string',
+            'zip_code'              => $request->user_type === 'inspector' ? 'required|string|max:20' : 'nullable|string|max:20',
+            'latitude'              => 'nullable|numeric',
+            'longitude'             => 'nullable|numeric',
+            'service_radius'        => 'nullable|numeric|min:1|max:500',
             'phone'                 => 'nullable|string|max:50',
             'profile_img'           => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
             'license_number'        => 'nullable|string|max:255',
@@ -110,6 +119,7 @@ class AuthController extends Controller
                 'password'      => Hash::make($request->password),
                 'status'        => $status,
                 'user_type'     => $request->user_type,
+                'device_token'  => $request->device_token,
                 'otp'           => $otp,
                 'otp_expire_at' => now()->addMinutes(5),
             ]);
@@ -119,9 +129,23 @@ class AuthController extends Controller
                 $profileImgPath = $request->file('profile_img')->store('profiles', 'public');
             }
 
+            $lat = $request->latitude;
+            $lng = $request->longitude;
+            if ((is_null($lat) || is_null($lng)) && !empty($request->zip_code)) {
+                $coords = \App\Services\GeoLocationService::getCoordinatesByZipCode($request->zip_code);
+                if ($coords) {
+                    $lat = $coords['latitude'];
+                    $lng = $coords['longitude'];
+                }
+            }
+
             $profile = Profile::create([
                 'user_id'                     => $user->id,
                 'address'                     => $request->address ?? null,
+                'zip_code'                    => $request->zip_code ?? null,
+                'latitude'                    => $lat,
+                'longitude'                   => $lng,
+                'service_radius'              => $request->service_radius ?? 50.00,
                 'profile_img'                 => $profileImgPath,
                 'phone'                       => $request->phone ?? null,
                 'license_number'              => $request->license_number ?? null,
@@ -178,6 +202,10 @@ class AuthController extends Controller
                 'first_name'            => 'required|string|max:255',
                 'last_name'             => 'required|string|max:255',
                 'address'               => 'nullable|string',
+                'zip_code'              => 'nullable|string|max:20',
+                'latitude'              => 'nullable|numeric',
+                'longitude'             => 'nullable|numeric',
+                'service_radius'        => 'nullable|numeric|min:1|max:500',
                 'phone'                 => 'nullable|string|max:50',
                 'profile_img'           => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
                 'license_number'        => 'nullable|string|max:255',
@@ -203,16 +231,41 @@ class AuthController extends Controller
                 $profile->profile_img = $request->file('profile_img')->store('profiles', 'public');
             }
 
-            $profile->address = $request->address;
-            $profile->phone   = $request->phone;
+            if ($request->has('address')) {
+                $profile->address = $request->address;
+            }
+            if ($request->has('zip_code')) {
+                $profile->zip_code = $request->zip_code;
+                if ((!$request->filled('latitude') || !$request->filled('longitude')) && !empty($request->zip_code)) {
+                    $coords = \App\Services\GeoLocationService::getCoordinatesByZipCode($request->zip_code);
+                    if ($coords) {
+                        $profile->latitude = $coords['latitude'];
+                        $profile->longitude = $coords['longitude'];
+                    }
+                }
+            }
+            if ($request->filled('latitude')) {
+                $profile->latitude = $request->latitude;
+            }
+            if ($request->filled('longitude')) {
+                $profile->longitude = $request->longitude;
+            }
+            if ($request->has('service_radius')) {
+                $profile->service_radius = $request->service_radius;
+            }
+            if ($request->has('phone')) {
+                $profile->phone = $request->phone;
+            }
 
             if ($user->user_type === 'inspector') {
-                $profile->license_number   = $request->license_number;
-                $profile->license_expiry   = $request->license_expiry;
-                $profile->insurance_expiry = $request->insurance_expiry;
+                $profile->license_number   = $request->license_number ?? $profile->license_number;
+                $profile->license_expiry   = $request->license_expiry ?? $profile->license_expiry;
+                $profile->insurance_expiry = $request->insurance_expiry ?? $profile->insurance_expiry;
 
-                $selectedTypes = $request->input('inspection_type_ids') ?? [];
-                $profile->inspectionTypes()->sync($selectedTypes);
+                if ($request->has('inspection_type_ids')) {
+                    $selectedTypes = $request->input('inspection_type_ids') ?? [];
+                    $profile->inspectionTypes()->sync($selectedTypes);
+                }
             }
 
             $profile->save();
@@ -233,6 +286,10 @@ class AuthController extends Controller
                     'profile'   => [
                         'id'                          => $profile->id,
                         'address'                     => $profile->address,
+                        'zip_code'                    => $profile->zip_code,
+                        'latitude'                    => $profile->latitude ? (float) $profile->latitude : null,
+                        'longitude'                   => $profile->longitude ? (float) $profile->longitude : null,
+                        'service_radius'              => (float) ($profile->service_radius ?? 50.00),
                         'phone'                       => $profile->phone,
                         'profile_img'                 => $profile->profile_img
                                                             ? asset('storage/' . $profile->profile_img)
@@ -307,6 +364,10 @@ class AuthController extends Controller
                 ], 403);
             }
 
+            if ($request->filled('device_token')) {
+                $user->update(['device_token' => $request->device_token]);
+            }
+
             $token = $user->createToken(config('auth.token_name', 'auth_token'))->plainTextToken;
 
             return response()->json([
@@ -348,6 +409,24 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Logged out successfully.',
+        ], 200);
+    }
+
+    public function updateDeviceToken(Request $request)
+    {
+        $request->validate([
+            'device_token' => 'required|string',
+        ]);
+
+        $user = $request->user();
+        $user->update([
+            'device_token' => $request->device_token,
+        ]);
+
+        return response()->json([
+            'success'      => true,
+            'message'      => 'Device token updated successfully.',
+            'device_token' => $user->device_token,
         ], 200);
     }
 

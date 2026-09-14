@@ -9,7 +9,8 @@ class Profile extends Model
     protected $table = 'profiles';
 
     protected $fillable = [
-        'user_id', 'address', 'profile_img', 'phone', 
+        'user_id', 'address', 'zip_code', 'latitude', 'longitude', 'service_radius',
+        'profile_img', 'phone', 
         'company_name', 'client_type',
         'license_number', 'license_expiry', 'insurance_expiry', 
         'stripe_account_id', 'stripe_customer_id', 'stripe_onboarding_completed'
