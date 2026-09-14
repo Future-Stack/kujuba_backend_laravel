@@ -12,6 +12,7 @@ class InspectionBooking extends Model
         'homeowner_id',
         'client_id',
         'property_address',
+        'zip_code',
         'property_type',
         'property_size',
         'note',

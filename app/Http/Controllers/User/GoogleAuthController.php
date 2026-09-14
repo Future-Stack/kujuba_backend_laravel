@@ -12,8 +12,9 @@ class GoogleAuthController extends Controller
     public function tokenLogin(Request $request)
     {
         $request->validate([
-            'id_token'  => 'required|string',
-            'user_type' => 'required|string|in:homeowner,inspector',
+            'id_token'     => 'required|string',
+            'user_type'    => 'required|string|in:homeowner,inspector',
+            'device_token' => 'nullable|string',
         ]);
 
         // 1. Verify Google token
@@ -67,7 +68,12 @@ class GoogleAuthController extends Controller
             ]
         );
 
-        // 6. Create token
+        // 6. Update device token if provided
+        if ($request->filled('device_token')) {
+            $user->update(['device_token' => $request->device_token]);
+        }
+
+        // 7. Create token
         $token = $user->createToken('google_token')->plainTextToken;
 
         // 7. Response

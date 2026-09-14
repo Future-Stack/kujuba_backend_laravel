@@ -158,25 +158,64 @@ class AdminInspectionController extends Controller
         }
     }
 
-    public function availableInspectors()
+    public function availableInspectors(Request $request)
     {
         try {
-            // Count active assignments per inspector
+            $bookingId = $request->query('booking_id');
+            $targetLat = $request->query('latitude');
+            $targetLng = $request->query('longitude');
+
+            if ($bookingId) {
+                $booking = InspectionBooking::find($bookingId);
+                if ($booking) {
+                    $targetLat = $booking->latitude;
+                    $targetLng = $booking->longitude;
+                }
+            }
+
+            // Count active assignments per inspector with profile
             $inspectors = User::where('user_type', 'inspector')
+                ->where('status', 'active')
+                ->with('profile')
                 ->withCount(['inspectionAssigns as active_assignments' => function ($q) {
                     $q->whereIn('status', ['assigned', 'started', 'rescheduled']);
                 }])
-                ->orderBy('active_assignments', 'asc') // least workload first
-                ->get(['id', 'first_name', 'last_name', 'email']);
+                ->get();
 
-            $data = $inspectors->map(function ($inspector) {
+            $data = $inspectors->map(function ($inspector) use ($targetLat, $targetLng) {
+                $distance = null;
+                $isWithinRadius = true;
+                $serviceRadius = (float) ($inspector->profile?->service_radius ?? 50.0);
+
+                if (!is_null($targetLat) && !is_null($targetLng) && !is_null($inspector->profile?->latitude) && !is_null($inspector->profile?->longitude)) {
+                    $distance = \App\Services\GeoLocationService::calculateDistance(
+                        (float) $targetLat,
+                        (float) $targetLng,
+                        (float) $inspector->profile->latitude,
+                        (float) $inspector->profile->longitude
+                    );
+                    $isWithinRadius = $distance <= $serviceRadius;
+                }
+
                 return [
-                    'id' => $inspector->id,
-                    'name' => $inspector->first_name . ' ' . $inspector->last_name,
-                    'email' => $inspector->email,
+                    'id'                 => $inspector->id,
+                    'name'               => $inspector->first_name . ' ' . $inspector->last_name,
+                    'email'              => $inspector->email,
+                    'phone'              => $inspector->profile?->phone,
+                    'zip_code'           => $inspector->profile?->zip_code,
+                    'service_radius'     => $serviceRadius,
+                    'distance_miles'     => $distance,
+                    'is_within_radius'   => $isWithinRadius,
                     'active_assignments' => $inspector->active_assignments,
                 ];
             });
+
+            // Sort: inspectors within radius first, then by distance (if available), then by active workload
+            $data = $data->sortBy([
+                ['is_within_radius', 'desc'],
+                ['distance_miles', 'asc'],
+                ['active_assignments', 'asc'],
+            ])->values();
 
             return response()->json([
                 'success' => true,

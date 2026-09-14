@@ -81,6 +81,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/user-profile', [AuthController::class, 'getProfile']);
 
         Route::post('/profile/update', [AuthController::class, 'updateProfile']);
+        Route::post('/update-device-token', [AuthController::class, 'updateDeviceToken']);
 
         Route::post('/book-inspection', [InspectionBookingRequestCotroller::class, 'store']);
 

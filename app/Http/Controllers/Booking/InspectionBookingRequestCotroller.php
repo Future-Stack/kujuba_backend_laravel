@@ -33,6 +33,7 @@ class InspectionBookingRequestCotroller extends Controller
             'inspection_type_ids' => 'required|array|min:1',
             'inspection_type_ids.*' => 'required|integer|exists:inspection_types,id',
             'property_address' => 'required|string|max:255',
+            'zip_code' => 'nullable|string|max:20',
             'property_type' => 'required|string|max:255',
             'property_size' => 'required|string|max:255',
             'note' => 'nullable|string',
@@ -102,6 +103,7 @@ class InspectionBookingRequestCotroller extends Controller
             $booking = InspectionBooking::create([
                 'homeowner_id' => $userId,
                 'property_address' => $request->property_address,
+                'zip_code' => $request->zip_code,
                 'property_type' => $request->property_type,
                 'property_size' => $request->property_size,
                 'note' => $request->note,
@@ -170,6 +172,26 @@ class InspectionBookingRequestCotroller extends Controller
 
             DB::commit();
 
+            // 🎯 Geo-targeted Notification: Notify nearby inspectors within 50 miles radius
+            try {
+                $nearbyInspectors = \App\Services\GeoLocationService::getNearbyInspectors(
+                    $booking->latitude ? (float) $booking->latitude : null,
+                    $booking->longitude ? (float) $booking->longitude : null,
+                    $booking->zip_code
+                );
+
+                if ($nearbyInspectors->isNotEmpty()) {
+                    Notification::send($nearbyInspectors, new PlatformNotification([
+                        'type'       => 'new_inspection_lead',
+                        'title'      => 'New Inspection Lead in Your Area!',
+                        'message'    => "A new inspection booking ({$booking->property_type}) is available near you ({$booking->property_address}).",
+                        'booking_id' => $booking->id,
+                        'sender_id'  => $booking->homeowner_id,
+                    ]));
+                }
+            } catch (\Throwable $geoEx) {
+                Log::warning('Nearby inspector notification failed in store: ' . $geoEx->getMessage());
+            }
 
             return response()->json([
                 'success' => true,
@@ -242,6 +264,27 @@ class InspectionBookingRequestCotroller extends Controller
                                 $booking->update([
                                     'status' => 'confirmed'
                                 ]);
+
+                                // 🎯 Geo-targeted Notification: Notify nearby inspectors within 50 miles radius
+                                try {
+                                    $nearbyInspectors = \App\Services\GeoLocationService::getNearbyInspectors(
+                                        $booking->latitude ? (float) $booking->latitude : null,
+                                        $booking->longitude ? (float) $booking->longitude : null,
+                                        $booking->zip_code
+                                    );
+
+                                    if ($nearbyInspectors->isNotEmpty()) {
+                                        Notification::send($nearbyInspectors, new PlatformNotification([
+                                            'type'       => 'new_inspection_lead',
+                                            'title'      => 'New Inspection Lead in Your Area!',
+                                            'message'    => "A new inspection booking ({$booking->property_type}) is available near you ({$booking->property_address}).",
+                                            'booking_id' => $booking->id,
+                                            'sender_id'  => $booking->homeowner_id,
+                                        ]));
+                                    }
+                                } catch (\Throwable $geoEx) {
+                                    Log::warning('Nearby inspector notification failed: ' . $geoEx->getMessage());
+                                }
                             }
                         }
                     }

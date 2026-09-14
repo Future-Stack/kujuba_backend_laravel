@@ -43,4 +43,13 @@ return [
         'cancel_webhook_secret' => env('CANCEL_WEBHOOK_SECRET'),
     ],
 
+    'fcm' => [
+        'server_key' => env('FCM_SERVER_KEY'),
+    ],
+
+    'firebase' => [
+        'credentials' => env('FIREBASE_CREDENTIALS', storage_path('app/firebase/firebase_credentials.json')),
+        'server_key'  => env('FCM_SERVER_KEY'),
+    ],
+
 ];
