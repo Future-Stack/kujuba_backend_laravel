@@ -47,11 +47,19 @@ class PlatformNotification extends Notification implements ShouldQueue
         }
 
         return new DatabaseMessage([
+ 
             'type'       => $type,
             'title'      => $title,
             'message'    => $message,
             'sender_id'  => $senderId,
             'booking_id' => $bookingId,
+
+            'type'      => $this->details['type'],
+            'title'     => $this->details['title'],
+            'message'   => $this->details['message'],
+            'sender_id' => $this->details['sender_id'],
+            'sent_to_label' => $this->details['sent_to_label'],
+
         ]);
     }
 }
