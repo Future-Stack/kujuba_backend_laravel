@@ -31,6 +31,7 @@ class PlatformNotification extends Notification implements ShouldQueue
             'title'     => $this->details['title'],
             'message'   => $this->details['message'],
             'sender_id' => $this->details['sender_id'],
+            'sent_to_label' => $this->details['sent_to_label'],
         ]);
     }
 }
