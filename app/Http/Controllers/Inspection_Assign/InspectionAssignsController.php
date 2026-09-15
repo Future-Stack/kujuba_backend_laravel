@@ -50,7 +50,7 @@ class InspectionAssignsController extends Controller
             if ($todayAcceptedCount >= 3) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Apni ajker jonno maximum 3 ta booking accept kore felechen. Ar 4th booking accept korte parben na.'
+                    'message' => 'You have already accepted the maximum of 3 bookings for today. You cannot accept a 4th booking.'
                 ], 422);
             }
 
