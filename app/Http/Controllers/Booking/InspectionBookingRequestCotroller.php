@@ -47,15 +47,42 @@ class InspectionBookingRequestCotroller extends Controller
             'longitude' => 'nullable|numeric',
         ]);
 
+        if ($request->urgent_status) {
+            $nowEst = now('America/New_York'); 
+            $todayEst = $nowEst->toDateString();
+
+            // 1. Same day check
+            if ($request->scheduled_date !== $todayEst) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Urgent inspection must be scheduled for today (same day).'
+                ], 422);
+            }
+
+            // 2. Cap it at 5 PM EST (17:00) check
+            $maxUrgentTime = '17:00';
+            if ($request->scheduled_time > $maxUrgentTime) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Urgent inspection time cannot be later than 5:00 PM EST for the same day.'
+                ], 422);
+            }
+
+            // 3. Current time theke 12 hourser moddhe ba valid range check (optional additional safety)
+            if ($request->scheduled_time < $nowEst->format('H:i')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Scheduled time for urgent inspection cannot be in the past.'
+                ], 422);
+            }
+        }
 
         $inspectionTypes = InspectionType::whereIn('id', $request->inspection_type_ids)->get();
         $subtotal = $inspectionTypes->sum('price');
 
-
         $platformFeeDigit = Setting::first()->platform_commission ?? 20.00;
         $platformFee = $subtotal * ($platformFeeDigit / 100);
         $urgentFee = Setting::first()->urgent_inspection_fee ?? 50.00;
-
 
         if ($request->urgent_status) {
             $total = $subtotal + $urgentFee;
@@ -65,15 +92,10 @@ class InspectionBookingRequestCotroller extends Controller
             $inspector_share = $subtotal - $platformFee;
         }
 
-
-
-
         DB::beginTransaction();
-
 
         try {
             $userId = auth()->id() ?? $request->homeowner_id;
-
 
             if (!$userId) {
                 return response()->json([
@@ -82,9 +104,7 @@ class InspectionBookingRequestCotroller extends Controller
                 ], 401);
             }
 
-
             $stripeSecret = config('services.stripe.secret') ?? env('STRIPE_SECRET');
-
 
             if (!$stripeSecret) {
                 return response()->json([
@@ -93,12 +113,10 @@ class InspectionBookingRequestCotroller extends Controller
                 ], 500);
             }
 
-
             $imagePath = null;
             if ($request->hasFile('property_img')) {
                 $imagePath = $request->file('property_img')->store('inspections', 'public');
             }
-
 
             $booking = InspectionBooking::create([
                 'homeowner_id' => $userId,
@@ -119,14 +137,10 @@ class InspectionBookingRequestCotroller extends Controller
                 'isRescheduled' => 0
             ]);
 
-
             $booking->inspectionTypes()->attach($request->inspection_type_ids);
-
 
             $payment = InspectionPayment::create([
                 'inspection_booking_id' => $booking->id,
-
-
                 'subtotal' => $subtotal,
                 'platform_fee' => $platformFee,
                 'inspector_share' => $inspector_share,
@@ -143,10 +157,8 @@ class InspectionBookingRequestCotroller extends Controller
                 'refunded_amount' => 0.00
             ]);
 
-
             // Stripe Payment Flow
             $stripe = new \Stripe\StripeClient($stripeSecret);
-
 
             $paymentIntent = $stripe->paymentIntents->create([
                 'amount' => intval($total * 100), // cents
@@ -163,16 +175,14 @@ class InspectionBookingRequestCotroller extends Controller
                 ],
             ]);
 
-
             $payment->update([
                 'trx_id' => $paymentIntent->id,
                 'stripe_id' => $paymentIntent->id,
             ]);
 
-
             DB::commit();
 
-            // 🎯 Geo-targeted Notification: Notify nearby inspectors within 50 miles radius
+            // Geo-targeted Notification: Notify nearby inspectors within 50 miles radius
             try {
                 $nearbyInspectors = \App\Services\GeoLocationService::getNearbyInspectors(
                     $booking->latitude ? (float) $booking->latitude : null,
@@ -190,7 +200,7 @@ class InspectionBookingRequestCotroller extends Controller
                     ]));
                 }
             } catch (\Throwable $geoEx) {
-                Log::warning('Nearby inspector notification failed in store: ' . $geoEx->getMessage());
+                Log::warning('Nearby inspector notification failed in store: ' . $geoEx.getMessage());
             }
 
             return response()->json([
@@ -201,7 +211,6 @@ class InspectionBookingRequestCotroller extends Controller
                 'payment_id' => $payment->id,
                 'stripe' => $paymentIntent,
             ], 201);
-
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();
@@ -219,6 +228,199 @@ class InspectionBookingRequestCotroller extends Controller
             ], 500);
         }
     }
+    
+    // public function store(Request $request)
+    // {
+    //     $request->validate([
+    //         'inspection_type_ids' => 'required|array|min:1',
+    //         'inspection_type_ids.*' => 'required|integer|exists:inspection_types,id',
+    //         'property_address' => 'required|string|max:255',
+    //         'zip_code' => 'nullable|string|max:20',
+    //         'property_type' => 'required|string|max:255',
+    //         'property_size' => 'required|string|max:255',
+    //         'note' => 'nullable|string',
+    //         'property_img' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+    //         'scheduled_date' => 'required|date_format:Y-m-d',
+    //         'scheduled_time' => 'required|date_format:H:i',
+    //         'scheduled_shift' => 'required|string|max:255',
+    //         'urgent_status' => 'nullable|boolean',
+    //         'payment_method_id' => 'nullable|string',
+    //         'latitude' => 'nullable|numeric',
+    //         'longitude' => 'nullable|numeric',
+    //     ]);
+
+
+    //     $inspectionTypes = InspectionType::whereIn('id', $request->inspection_type_ids)->get();
+    //     $subtotal = $inspectionTypes->sum('price');
+
+
+    //     $platformFeeDigit = Setting::first()->platform_commission ?? 20.00;
+    //     $platformFee = $subtotal * ($platformFeeDigit / 100);
+    //     $urgentFee = Setting::first()->urgent_inspection_fee ?? 50.00;
+
+
+    //     if ($request->urgent_status) {
+    //         $total = $subtotal + $urgentFee;
+    //         $inspector_share = ($subtotal - $platformFee)  + $urgentFee;
+    //     } else {
+    //         $total = $subtotal;
+    //         $inspector_share = $subtotal - $platformFee;
+    //     }
+
+
+
+
+    //     DB::beginTransaction();
+
+
+    //     try {
+    //         $userId = auth()->id() ?? $request->homeowner_id;
+
+
+    //         if (!$userId) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Unauthorized user access context.'
+    //             ], 401);
+    //         }
+
+
+    //         $stripeSecret = config('services.stripe.secret') ?? env('STRIPE_SECRET');
+
+
+    //         if (!$stripeSecret) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Stripe API secret key is missing in your .env file.'
+    //             ], 500);
+    //         }
+
+
+    //         $imagePath = null;
+    //         if ($request->hasFile('property_img')) {
+    //             $imagePath = $request->file('property_img')->store('inspections', 'public');
+    //         }
+
+
+    //         $booking = InspectionBooking::create([
+    //             'homeowner_id' => $userId,
+    //             'property_address' => $request->property_address,
+    //             'zip_code' => $request->zip_code,
+    //             'property_type' => $request->property_type,
+    //             'property_size' => $request->property_size,
+    //             'note' => $request->note,
+    //             'property_img' => $imagePath,
+    //             'booking_date' => now()->toDateString(),
+    //             'scheduled_date' => $request->scheduled_date,
+    //             'scheduled_time' => $request->scheduled_time,
+    //             'scheduled_shift' => $request->scheduled_shift,
+    //             'urgent_status' => $request->urgent_status ? 1 : 0,
+    //             'status' => 'pending',
+    //             'latitude' => $request->latitude,
+    //             'longitude' => $request->longitude,
+    //             'isRescheduled' => 0
+    //         ]);
+
+
+    //         $booking->inspectionTypes()->attach($request->inspection_type_ids);
+
+
+    //         $payment = InspectionPayment::create([
+    //             'inspection_booking_id' => $booking->id,
+
+
+    //             'subtotal' => $subtotal,
+    //             'platform_fee' => $platformFee,
+    //             'inspector_share' => $inspector_share,
+    //             'admin_share' => $platformFee,
+    //             'urgent_fee' => $request->urgent_status ? $urgentFee : 0.00,
+    //             'total' => $total,
+    //             'payment_type' => 'inspection_fee',
+    //             'trx_id' => null,
+    //             'status' => 'pending',
+    //             'urgentStatus' => $request->urgent_status ? '1' : '0',
+    //             'stripe_id' => null,
+    //             'is_disbursed' => false,
+    //             'penalty_amount' => 0.00,
+    //             'refunded_amount' => 0.00
+    //         ]);
+
+
+    //         // Stripe Payment Flow
+    //         $stripe = new \Stripe\StripeClient($stripeSecret);
+
+
+    //         $paymentIntent = $stripe->paymentIntents->create([
+    //             'amount' => intval($total * 100), // cents
+    //             'currency' => 'usd',
+    //             'description' => 'Inspection Booking',
+    //             'metadata' => [
+    //                 'type' => 'booking',
+    //                 'booking_id' => $booking->id,
+    //                 'booking_amount' => $total,
+    //                 'payment_id' => $payment->id,
+    //             ],
+    //             'automatic_payment_methods' => [
+    //                 'enabled' => true,
+    //             ],
+    //         ]);
+
+
+    //         $payment->update([
+    //             'trx_id' => $paymentIntent->id,
+    //             'stripe_id' => $paymentIntent->id,
+    //         ]);
+
+
+    //         DB::commit();
+
+    //         // 🎯 Geo-targeted Notification: Notify nearby inspectors within 50 miles radius
+    //         try {
+    //             $nearbyInspectors = \App\Services\GeoLocationService::getNearbyInspectors(
+    //                 $booking->latitude ? (float) $booking->latitude : null,
+    //                 $booking->longitude ? (float) $booking->longitude : null,
+    //                 $booking->zip_code
+    //             );
+
+    //             if ($nearbyInspectors->isNotEmpty()) {
+    //                 Notification::send($nearbyInspectors, new PlatformNotification([
+    //                     'type'       => 'new_inspection_lead',
+    //                     'title'      => 'New Inspection Lead in Your Area!',
+    //                     'message'    => "A new inspection booking ({$booking->property_type}) is available near you ({$booking->property_address}).",
+    //                     'booking_id' => $booking->id,
+    //                     'sender_id'  => $booking->homeowner_id,
+    //                 ]));
+    //             }
+    //         } catch (\Throwable $geoEx) {
+    //             Log::warning('Nearby inspector notification failed in store: ' . $geoEx->getMessage());
+    //         }
+
+    //         return response()->json([
+    //             'success' => true,
+    //             'message' => 'Booking created successfully.',
+    //             'amount' => $total,
+    //             'booking_id' => $booking->id,
+    //             'payment_id' => $payment->id,
+    //             'stripe' => $paymentIntent,
+    //         ], 201);
+
+
+    //     } catch (\Illuminate\Validation\ValidationException $e) {
+    //         DB::rollBack();
+    //         return response()->json([
+    //             'success' => false,
+    //             'errors' => $e->errors(),
+    //         ], 422);
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         Log::error('Booking Store Error: ' . $e->getMessage());
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Failed to create Booking.',
+    //             'error' => $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }
 
 
     public function handleWebhook(Request $request)
