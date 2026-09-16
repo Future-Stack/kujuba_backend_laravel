@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('profiles', function (Blueprint $table) {
             if (!Schema::hasColumn('profiles', 'zip_code')) {
-                $table->string('zip_code', 20)->nullable()->after('address');
+                 $table->json('zip_code')->nullable()->after('address');
             }
             if (!Schema::hasColumn('profiles', 'latitude')) {
                 $table->decimal('latitude', 10, 7)->nullable()->after('zip_code');

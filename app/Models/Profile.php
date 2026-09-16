@@ -16,6 +16,11 @@ class Profile extends Model
         'stripe_account_id', 'stripe_customer_id', 'stripe_onboarding_completed'
     ];
 
+
+
+    protected $casts = [
+        'zip_code' => 'array',
+    ];
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
