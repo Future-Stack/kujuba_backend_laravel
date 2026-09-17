@@ -182,25 +182,22 @@ class InspectionBookingRequestCotroller extends Controller
 
             DB::commit();
 
-            // Geo-targeted Notification: Notify nearby inspectors within 50 miles radius
-            try {
-                $nearbyInspectors = \App\Services\GeoLocationService::getNearbyInspectors(
-                    $booking->latitude ? (float) $booking->latitude : null,
-                    $booking->longitude ? (float) $booking->longitude : null,
-                    $booking->zip_code
-                );
+            // Geo-targeted notification to nearby inspectors is sent in handleWebhook() after payment confirmation
 
-                if ($nearbyInspectors->isNotEmpty()) {
-                    Notification::send($nearbyInspectors, new PlatformNotification([
-                        'type'       => 'new_inspection_lead',
-                        'title'      => 'New Inspection Lead in Your Area!',
-                        'message'    => "A new inspection booking ({$booking->property_type}) is available near you ({$booking->property_address}).",
+            // Notify Homeowner
+            try {
+                $homeowner = User::find($booking->homeowner_id);
+                if ($homeowner) {
+                    $homeowner->notify(new PlatformNotification([
+                        'type'       => 'booking_created',
+                        'title'      => 'Booking Request Placed!',
+                        'message'    => "Your inspection booking #{$booking->id} has been placed successfully.",
                         'booking_id' => $booking->id,
                         'sender_id'  => $booking->homeowner_id,
                     ]));
                 }
-            } catch (\Throwable $geoEx) {
-                Log::warning('Nearby inspector notification failed in store: ' . $geoEx.getMessage());
+            } catch (\Throwable $homeownerEx) {
+                Log::warning('Homeowner notification failed in store: ' . $homeownerEx->getMessage());
             }
 
             return response()->json([
@@ -486,6 +483,22 @@ class InspectionBookingRequestCotroller extends Controller
                                     }
                                 } catch (\Throwable $geoEx) {
                                     Log::warning('Nearby inspector notification failed: ' . $geoEx->getMessage());
+                                }
+
+                                // 📲 Notify Homeowner of Booking Confirmation
+                                try {
+                                    $homeowner = User::find($booking->homeowner_id);
+                                    if ($homeowner) {
+                                        $homeowner->notify(new PlatformNotification([
+                                            'type'       => 'booking_confirmed',
+                                            'title'      => 'Booking Confirmed!',
+                                            'message'    => "Your inspection booking #{$booking->id} has been confirmed successfully.",
+                                            'booking_id' => $booking->id,
+                                            'sender_id'  => $booking->homeowner_id,
+                                        ]));
+                                    }
+                                } catch (\Throwable $homeownerEx) {
+                                    Log::warning('Homeowner webhook confirmation notification failed: ' . $homeownerEx->getMessage());
                                 }
                             }
                         }

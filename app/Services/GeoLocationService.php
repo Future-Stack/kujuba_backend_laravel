@@ -112,7 +112,7 @@ class GeoLocationService
             // Also match inspectors sharing the same zip code even if coordinates are not yet set
             if (!empty($zipCode)) {
                 $inspectorsWithZip = (clone $query)->whereHas('profile', function ($q) use ($zipCode) {
-                    $q->where('zip_code', $zipCode)
+                    $q->whereJsonContains('zip_code', $zipCode)
                       ->whereNull('latitude');
                 })->with('profile')->get();
 
@@ -125,7 +125,7 @@ class GeoLocationService
         // 2. If only zip code is provided and coords resolution failed, match by zip code directly
         if (!empty($zipCode)) {
             return (clone $query)->whereHas('profile', function ($q) use ($zipCode) {
-                $q->where('zip_code', $zipCode);
+                $q->whereJsonContains('zip_code', $zipCode);
             })->with('profile')->get();
         }
 

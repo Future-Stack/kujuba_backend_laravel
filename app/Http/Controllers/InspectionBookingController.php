@@ -14,6 +14,8 @@ use Stripe\PaymentIntent;
 use App\Models\InspectionType;
 use Stripe\Transfer;
 use App\Models\Profile;
+use App\Models\User;
+use App\Notifications\PlatformNotification;
 
 
 class InspectionBookingController extends Controller
@@ -213,6 +215,22 @@ class InspectionBookingController extends Controller
             ]);
 
             DB::commit();
+
+            // Notify homeowner via push notification & in-app database notification
+            try {
+                $homeowner = User::find($userId);
+                if ($homeowner) {
+                    $homeowner->notify(new PlatformNotification([
+                        'type'       => 'booking_confirmed',
+                        'title'      => 'Booking Confirmed!',
+                        'message'    => "Your inspection booking #{$booking->id} has been placed and paid successfully.",
+                        'booking_id' => $booking->id,
+                        'sender_id'  => $userId,
+                    ]));
+                }
+            } catch (\Throwable $notiEx) {
+                Log::warning('Homeowner push notification failed in InspectionBookingController: ' . $notiEx->getMessage());
+            }
 
             return response()->json([
                 'success' => true,
