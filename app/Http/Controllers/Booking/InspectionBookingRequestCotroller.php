@@ -610,20 +610,38 @@ class InspectionBookingRequestCotroller extends Controller
     {
         try {
             $filter = $request->query('filter');
-            $user = Auth::user();
-
-
-
+            $user = Auth::user()->load('profile');
+            
+            $inspectorLat = $user->profile?->latitude;
+            $inspectorLng = $user->profile?->longitude;
+            // Inspector-এর সেট করা service_radius অথবা ডিফল্ট 50 KM
+            $maxDistanceKm = 50.0; // ৫০ কিলোমিটার 
 
             // Base query with relationships
-            $query = InspectionBooking::with(['payment', 'inspectionTypes','reschedule'])
+            $query = InspectionBooking::with(['payment', 'inspectionTypes', 'reschedule'])
                 ->whereHas('payment', fn($q) => $q->where('status', 'paid'))
                 ->whereDoesntHave('declines', function ($q) use ($user) {
                     $q->where('inspector_id', $user->id);
                 })
-                ->whereDoesntHave('inspectionAssign')
-                ->latest();
+                ->whereDoesntHave('inspectionAssign');
 
+            // যদি Inspector-এর লোকেশন থাকে, তবে 50 km-এর মধ্যে ফিল্টার ও দূরত্ব বের করা
+            if (!is_null($inspectorLat) && !is_null($inspectorLng)) {
+                // 6371 হলো পৃথিবীর ব্যাসার্ধ (Kilometers-এ)
+                $haversineSql = "(6371 * acos(least(1.0, greatest(-1.0, 
+                    cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) 
+                    + sin(radians(?)) * sin(radians(latitude))
+                ))))";
+
+                $query->select('inspection_bookings.*')
+                    ->selectRaw("{$haversineSql} AS distance_km", [$inspectorLat, $inspectorLng, $inspectorLat])
+                    ->whereNotNull('latitude')
+                    ->whereNotNull('longitude')
+                    ->having('distance_km', '<=', $maxDistanceKm)
+                    ->orderBy('distance_km', 'asc');
+            } else {
+                $query->latest();
+            }
 
             // Apply filter logic
             if ($filter === 'urgent') {
@@ -634,25 +652,28 @@ class InspectionBookingRequestCotroller extends Controller
                 $query->limit(5);
             }
 
-
             $bookings = $query->get()->map(function ($booking) {
                 $payment = $booking->payment;
                 $reschedule = $booking->reschedule ?? null;
                 $type = $booking->inspectionTypes->pluck('title')->toArray();
-                $img =  $booking->inspectionTypes->pluck('img')->toArray();
-                $price  = $booking->inspectionTypes->pluck('price')->toArray();
+                $img = $booking->inspectionTypes->pluck('img')->toArray();
+                $price = $booking->inspectionTypes->pluck('price')->toArray();
 
+                // ক্যালকুলেটেড দূরত্ব ফরম্যাট করা
+                $distanceFormatted = isset($booking->distance_km) 
+                    ? round($booking->distance_km, 1) . ' km' 
+                    : null;
 
                 return [
                     'id' => $booking->id,
-                    'inspection_img' =>$img,
+                    'inspection_img' => $img,
                     'inspection_type' => $type,
                     'inspection_price' => $price,
                     'property_address' => $booking->property_address,
                     'property_type' => $booking->property_type,
                     'property_size' => $booking->property_size,
                     'property_img' => $booking->property_img,
-                    'scheduled_date' => $booking->scheduled_date->format('Y-m-d'),
+                    'scheduled_date' => $booking->scheduled_date ? $booking->scheduled_date->format('Y-m-d') : null,
                     'scheduled_time' => $booking->scheduled_time,
                     'urgent_status' => $booking->urgent_status,
                     'rescheduled_status' => $booking->isRescheduled,
@@ -660,19 +681,16 @@ class InspectionBookingRequestCotroller extends Controller
                     'status' => $booking->status,
                     'note' => $booking->note,
                     'price' => $payment ? number_format($payment->subtotal, 2) : null,
-                    'distance' => $booking->distance ?? null,
-                    'estimate_time' => $booking->estimate_time ?? null,
+                    'distance' => $distanceFormatted, // যেমন: "12.4 km"
                     'latitude' => $booking->latitude,
                     'longitude' => $booking->longitude,
                 ];
             });
 
-
             return response()->json([
                 'success' => true,
                 'data' => $bookings,
             ], 200);
-
 
         } catch (\Exception $e) {
             \Log::error('Booking list fetch failed: ' . $e->getMessage());
@@ -682,6 +700,7 @@ class InspectionBookingRequestCotroller extends Controller
             ], 500);
         }
     }
+
 
 
     public function rescheduleBookingList(Request $request)
