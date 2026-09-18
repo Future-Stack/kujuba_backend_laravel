@@ -614,8 +614,7 @@ class InspectionBookingRequestCotroller extends Controller
             
             $inspectorLat = $user->profile?->latitude;
             $inspectorLng = $user->profile?->longitude;
-            // Inspector-এর সেট করা service_radius অথবা ডিফল্ট 50 KM
-            $maxDistanceKm = 50.0; // ৫০ কিলোমিটার 
+            $maxDistanceKm = 50.0;
 
             // Base query with relationships
             $query = InspectionBooking::with(['payment', 'inspectionTypes', 'reschedule'])
@@ -625,9 +624,8 @@ class InspectionBookingRequestCotroller extends Controller
                 })
                 ->whereDoesntHave('inspectionAssign');
 
-            // যদি Inspector-এর লোকেশন থাকে, তবে 50 km-এর মধ্যে ফিল্টার ও দূরত্ব বের করা
             if (!is_null($inspectorLat) && !is_null($inspectorLng)) {
-                // 6371 হলো পৃথিবীর ব্যাসার্ধ (Kilometers-এ)
+                
                 $haversineSql = "(6371 * acos(least(1.0, greatest(-1.0, 
                     cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) 
                     + sin(radians(?)) * sin(radians(latitude))
@@ -659,7 +657,6 @@ class InspectionBookingRequestCotroller extends Controller
                 $img = $booking->inspectionTypes->pluck('img')->toArray();
                 $price = $booking->inspectionTypes->pluck('price')->toArray();
 
-                // ক্যালকুলেটেড দূরত্ব ফরম্যাট করা
                 $distanceFormatted = isset($booking->distance_km) 
                     ? round($booking->distance_km, 1) . ' km' 
                     : null;
@@ -681,7 +678,7 @@ class InspectionBookingRequestCotroller extends Controller
                     'status' => $booking->status,
                     'note' => $booking->note,
                     'price' => $payment ? number_format($payment->subtotal, 2) : null,
-                    'distance' => $distanceFormatted, // যেমন: "12.4 km"
+                    'distance' => $distanceFormatted,
                     'latitude' => $booking->latitude,
                     'longitude' => $booking->longitude,
                 ];
@@ -693,7 +690,7 @@ class InspectionBookingRequestCotroller extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            \Log::error('Booking list fetch failed: ' . $e->getMessage());
+            Log::error('Booking list fetch failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),

@@ -102,8 +102,8 @@ class AuthController extends Controller
 
             'zip_code.*'            => 'string|max:20',
 
-            'latitude'              => 'nullable|numeric',
-            'longitude'             => 'nullable|numeric',
+            'latitude'              => 'required|numeric',
+            'longitude'             => 'required|numeric',
 
             // Default: 50 miles
             'service_radius'        => 'nullable|numeric|min:1|max:500',
@@ -281,288 +281,288 @@ class AuthController extends Controller
     }
 
 
-   public function updateProfile(Request $request)
-{
-    try {
-        $user = $request->user();
+    public function updateProfile(Request $request)
+    {
+        try {
+            $user = $request->user();
 
-        if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthenticated user context.',
-            ], 401);
-        }
-
-        $request->validate([
-            'first_name'            => 'required|string|max:255',
-            'last_name'             => 'required|string|max:255',
-            'address'               => 'nullable|string',
-
-            // Up to 3 ZIP codes
-            'zip_code'              => 'nullable|array|max:3',
-            'zip_code.*'            => 'string|max:20',
-
-            'latitude'              => 'nullable|numeric',
-            'longitude'             => 'nullable|numeric',
-
-            // Default remains 50 miles
-            'service_radius'        => 'nullable|numeric|min:1|max:500',
-
-            'phone'                 => 'nullable|string|max:50',
-            'profile_img'           => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
-
-            'license_number'        => 'nullable|string|max:255',
-            'license_expiry'        => 'nullable|date_format:Y-m-d',
-            'insurance_expiry'      => 'nullable|date_format:Y-m-d',
-
-            'inspection_type_ids'   => 'nullable|array',
-            'inspection_type_ids.*' => 'integer|exists:inspection_types,id',
-        ]);
-
-        DB::beginTransaction();
-
-        /*
-        |--------------------------------------------------------------------------
-        | Update User
-        |--------------------------------------------------------------------------
-        */
-        $user->update([
-            'first_name' => $request->first_name,
-            'last_name'  => $request->last_name,
-        ]);
-
-        /*
-        |--------------------------------------------------------------------------
-        | Get / Create Profile
-        |--------------------------------------------------------------------------
-        */
-        $profile = Profile::firstOrCreate([
-            'user_id' => $user->id,
-        ]);
-
-        /*
-        |--------------------------------------------------------------------------
-        | Profile Image
-        |--------------------------------------------------------------------------
-        */
-        if ($request->hasFile('profile_img')) {
-            if (
-                $profile->profile_img &&
-                Storage::disk('public')->exists($profile->profile_img)
-            ) {
-                Storage::disk('public')->delete($profile->profile_img);
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthenticated user context.',
+                ], 401);
             }
 
-            $profile->profile_img = $request->file('profile_img')
-                ->store('profiles', 'public');
-        }
+            $request->validate([
+                'first_name'            => 'required|string|max:255',
+                'last_name'             => 'required|string|max:255',
+                'address'               => 'nullable|string',
 
-        /*
-        |--------------------------------------------------------------------------
-        | Address
-        |--------------------------------------------------------------------------
-        */
-        if ($request->has('address')) {
-            $profile->address = $request->address;
-        }
+                // Up to 3 ZIP codes
+                'zip_code'              => 'nullable|array|max:3',
+                'zip_code.*'            => 'string|max:20',
 
-        /*
-        |--------------------------------------------------------------------------
-        | ZIP Codes
-        |--------------------------------------------------------------------------
-        |
-        | Example:
-        | ["90210", "90211", "90212"]
-        |
-        | The first ZIP is used for coordinate lookup.
-        |--------------------------------------------------------------------------
-        */
-        if ($request->has('zip_code')) {
+                'latitude'              => 'required|numeric',
+                'longitude'             => 'required|numeric',
 
-            $zipCodes = $request->input('zip_code') ?? [];
+                // Default remains 50 miles
+                'service_radius'        => 'nullable|numeric|min:1|max:500',
 
-            $profile->zip_code = $zipCodes;
+                'phone'                 => 'nullable|string|max:50',
+                'profile_img'           => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
+
+                'license_number'        => 'nullable|string|max:255',
+                'license_expiry'        => 'nullable|date_format:Y-m-d',
+                'insurance_expiry'      => 'nullable|date_format:Y-m-d',
+
+                'inspection_type_ids'   => 'nullable|array',
+                'inspection_type_ids.*' => 'integer|exists:inspection_types,id',
+            ]);
+
+            DB::beginTransaction();
 
             /*
             |--------------------------------------------------------------------------
-            | Get coordinates from the primary ZIP
+            | Update User
             |--------------------------------------------------------------------------
             */
-            if (
-                (!$request->filled('latitude') || !$request->filled('longitude')) &&
-                !empty($zipCodes)
-            ) {
-                $primaryZip = $zipCodes[0] ?? null;
+            $user->update([
+                'first_name' => $request->first_name,
+                'last_name'  => $request->last_name,
+            ]);
 
-                if ($primaryZip) {
-                    $coords = \App\Services\GeoLocationService::getCoordinatesByZipCode(
-                        $primaryZip
-                    );
+            /*
+            |--------------------------------------------------------------------------
+            | Get / Create Profile
+            |--------------------------------------------------------------------------
+            */
+            $profile = Profile::firstOrCreate([
+                'user_id' => $user->id,
+            ]);
 
-                    if ($coords) {
-                        $profile->latitude = $coords['latitude'];
-                        $profile->longitude = $coords['longitude'];
+            /*
+            |--------------------------------------------------------------------------
+            | Profile Image
+            |--------------------------------------------------------------------------
+            */
+            if ($request->hasFile('profile_img')) {
+                if (
+                    $profile->profile_img &&
+                    Storage::disk('public')->exists($profile->profile_img)
+                ) {
+                    Storage::disk('public')->delete($profile->profile_img);
+                }
+
+                $profile->profile_img = $request->file('profile_img')
+                    ->store('profiles', 'public');
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Address
+            |--------------------------------------------------------------------------
+            */
+            if ($request->has('address')) {
+                $profile->address = $request->address;
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | ZIP Codes
+            |--------------------------------------------------------------------------
+            |
+            | Example:
+            | ["90210", "90211", "90212"]
+            |
+            | The first ZIP is used for coordinate lookup.
+            |--------------------------------------------------------------------------
+            */
+            if ($request->has('zip_code')) {
+
+                $zipCodes = $request->input('zip_code') ?? [];
+
+                $profile->zip_code = $zipCodes;
+
+                /*
+                |--------------------------------------------------------------------------
+                | Get coordinates from the primary ZIP
+                |--------------------------------------------------------------------------
+                */
+                if (
+                    (!$request->filled('latitude') || !$request->filled('longitude')) &&
+                    !empty($zipCodes)
+                ) {
+                    $primaryZip = $zipCodes[0] ?? null;
+
+                    if ($primaryZip) {
+                        $coords = \App\Services\GeoLocationService::getCoordinatesByZipCode(
+                            $primaryZip
+                        );
+
+                        if ($coords) {
+                            $profile->latitude = $coords['latitude'];
+                            $profile->longitude = $coords['longitude'];
+                        }
                     }
                 }
             }
-        }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Latitude / Longitude
-        |--------------------------------------------------------------------------
-        |
-        | If user explicitly sends coordinates, they take priority.
-        |--------------------------------------------------------------------------
-        */
-        if ($request->filled('latitude')) {
-            $profile->latitude = $request->latitude;
-        }
-
-        if ($request->filled('longitude')) {
-            $profile->longitude = $request->longitude;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Service Radius
-        |--------------------------------------------------------------------------
-        */
-        if ($request->has('service_radius')) {
-            $profile->service_radius = $request->service_radius;
-        } elseif (!$profile->service_radius) {
-            $profile->service_radius = 50.00;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Phone
-        |--------------------------------------------------------------------------
-        */
-        if ($request->has('phone')) {
-            $profile->phone = $request->phone;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Inspector-specific Information
-        |--------------------------------------------------------------------------
-        */
-        if ($user->user_type === 'inspector') {
-
-            if ($request->has('license_number')) {
-                $profile->license_number = $request->license_number;
+            /*
+            |--------------------------------------------------------------------------
+            | Latitude / Longitude
+            |--------------------------------------------------------------------------
+            |
+            | If user explicitly sends coordinates, they take priority.
+            |--------------------------------------------------------------------------
+            */
+            if ($request->filled('latitude')) {
+                $profile->latitude = $request->latitude;
             }
 
-            if ($request->has('license_expiry')) {
-                $profile->license_expiry = $request->license_expiry;
-            }
-
-            if ($request->has('insurance_expiry')) {
-                $profile->insurance_expiry = $request->insurance_expiry;
+            if ($request->filled('longitude')) {
+                $profile->longitude = $request->longitude;
             }
 
             /*
             |--------------------------------------------------------------------------
-            | Inspection Types
+            | Service Radius
             |--------------------------------------------------------------------------
             */
-            if ($request->has('inspection_type_ids')) {
-                $selectedTypes = $request->input('inspection_type_ids') ?? [];
-
-                $profile->inspectionTypes()->sync($selectedTypes);
+            if ($request->has('service_radius')) {
+                $profile->service_radius = $request->service_radius;
+            } elseif (!$profile->service_radius) {
+                $profile->service_radius = 50.00;
             }
-        }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Save Profile
-        |--------------------------------------------------------------------------
-        */
-        $profile->save();
+            /*
+            |--------------------------------------------------------------------------
+            | Phone
+            |--------------------------------------------------------------------------
+            */
+            if ($request->has('phone')) {
+                $profile->phone = $request->phone;
+            }
 
-        DB::commit();
+            /*
+            |--------------------------------------------------------------------------
+            | Inspector-specific Information
+            |--------------------------------------------------------------------------
+            */
+            if ($user->user_type === 'inspector') {
 
-        /*
-        |--------------------------------------------------------------------------
-        | Load Relationships
-        |--------------------------------------------------------------------------
-        */
-        $user->load(['profile.inspectionTypes']);
+                if ($request->has('license_number')) {
+                    $profile->license_number = $request->license_number;
+                }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Profile updated successfully.',
-            'data'    => [
-                'id'         => $user->id,
-                'first_name' => $user->first_name,
-                'last_name'  => $user->last_name,
-                'email'      => $user->email,
-                'user_type'  => $user->user_type,
+                if ($request->has('license_expiry')) {
+                    $profile->license_expiry = $request->license_expiry;
+                }
 
-                'profile' => [
-                    'id'                          => $profile->id,
-                    'address'                     => $profile->address,
-                    'zip_code'                    => $profile->zip_code,
+                if ($request->has('insurance_expiry')) {
+                    $profile->insurance_expiry = $request->insurance_expiry;
+                }
 
-                    'latitude'                    => $profile->latitude
-                        ? (float) $profile->latitude
-                        : null,
+                /*
+                |--------------------------------------------------------------------------
+                | Inspection Types
+                |--------------------------------------------------------------------------
+                */
+                if ($request->has('inspection_type_ids')) {
+                    $selectedTypes = $request->input('inspection_type_ids') ?? [];
 
-                    'longitude'                   => $profile->longitude
-                        ? (float) $profile->longitude
-                        : null,
+                    $profile->inspectionTypes()->sync($selectedTypes);
+                }
+            }
 
-                    'service_radius'              => (float) (
-                        $profile->service_radius ?? 50.00
-                    ),
+            /*
+            |--------------------------------------------------------------------------
+            | Save Profile
+            |--------------------------------------------------------------------------
+            */
+            $profile->save();
 
-                    'phone'                       => $profile->phone,
+            DB::commit();
 
-                    'profile_img'                 => $profile->profile_img
-                        ? asset('storage/' . $profile->profile_img)
-                        : asset('defaults/placeholder.png'),
+            /*
+            |--------------------------------------------------------------------------
+            | Load Relationships
+            |--------------------------------------------------------------------------
+            */
+            $user->load(['profile.inspectionTypes']);
 
-                    'license_number'              => $profile->license_number,
-                    'license_expiry'              => $profile->license_expiry,
-                    'insurance_expiry'            => $profile->insurance_expiry,
+            return response()->json([
+                'success' => true,
+                'message' => 'Profile updated successfully.',
+                'data'    => [
+                    'id'         => $user->id,
+                    'first_name' => $user->first_name,
+                    'last_name'  => $user->last_name,
+                    'email'      => $user->email,
+                    'user_type'  => $user->user_type,
 
-                    'stripe_account_id'           => $profile->stripe_account_id,
-                    'stripe_customer_id'          => $profile->stripe_customer_id,
-                    'stripe_onboarding_completed' => (bool) $profile->stripe_onboarding_completed,
+                    'profile' => [
+                        'id'                          => $profile->id,
+                        'address'                     => $profile->address,
+                        'zip_code'                    => $profile->zip_code,
 
-                    'inspection_types'            => $profile->inspectionTypes->map(function ($type) {
-                        return [
-                            'id'    => $type->id,
-                            'title' => $type->title,
-                            'price' => (float) $type->price,
-                        ];
-                    }),
+                        'latitude'                    => $profile->latitude
+                            ? (float) $profile->latitude
+                            : null,
+
+                        'longitude'                   => $profile->longitude
+                            ? (float) $profile->longitude
+                            : null,
+
+                        'service_radius'              => (float) (
+                            $profile->service_radius ?? 50.00
+                        ),
+
+                        'phone'                       => $profile->phone,
+
+                        'profile_img'                 => $profile->profile_img
+                            ? asset('storage/' . $profile->profile_img)
+                            : asset('defaults/placeholder.png'),
+
+                        'license_number'              => $profile->license_number,
+                        'license_expiry'              => $profile->license_expiry,
+                        'insurance_expiry'            => $profile->insurance_expiry,
+
+                        'stripe_account_id'           => $profile->stripe_account_id,
+                        'stripe_customer_id'          => $profile->stripe_customer_id,
+                        'stripe_onboarding_completed' => (bool) $profile->stripe_onboarding_completed,
+
+                        'inspection_types'            => $profile->inspectionTypes->map(function ($type) {
+                            return [
+                                'id'    => $type->id,
+                                'title' => $type->title,
+                                'price' => (float) $type->price,
+                            ];
+                        }),
+                    ],
                 ],
-            ],
-        ], 200);
+            ], 200);
 
-    } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (\Illuminate\Validation\ValidationException $e) {
 
-        DB::rollBack();
+            DB::rollBack();
 
-        return response()->json([
-            'success' => false,
-            'message' => collect($e->errors())->flatten()->first(),
-        ], 422);
+            return response()->json([
+                'success' => false,
+                'message' => collect($e->errors())->flatten()->first(),
+            ], 422);
 
-    } catch (\Exception $e) {
+        } catch (\Exception $e) {
 
-        DB::rollBack();
+            DB::rollBack();
 
-        Log::error('Profile Update Error: ' . $e->getMessage());
+            Log::error('Profile Update Error: ' . $e->getMessage());
 
-        return response()->json([
-            'success' => false,
-            'message' => 'Failed to update profile. Please try again.',
-        ], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update profile. Please try again.',
+            ], 500);
+        }
     }
-}
 
     public function login(Request $request)
     {
