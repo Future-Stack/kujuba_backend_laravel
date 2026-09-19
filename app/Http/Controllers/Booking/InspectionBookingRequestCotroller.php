@@ -118,6 +118,25 @@ class InspectionBookingRequestCotroller extends Controller
                 $imagePath = $request->file('property_img')->store('inspections', 'public');
             }
 
+            $lat = $request->latitude;
+            $lng = $request->longitude;
+
+            if (is_null($lat) || is_null($lng)) {
+                $homeowner = User::with('profile')->find($userId);
+                if ($homeowner && $homeowner->profile) {
+                    $lat = $lat ?? $homeowner->profile->latitude;
+                    $lng = $lng ?? $homeowner->profile->longitude;
+                }
+
+                if ((is_null($lat) || is_null($lng)) && !empty($request->zip_code)) {
+                    $coords = \App\Services\GeoLocationService::getCoordinatesByZipCode($request->zip_code);
+                    if ($coords) {
+                        $lat = $lat ?? $coords['latitude'];
+                        $lng = $lng ?? $coords['longitude'];
+                    }
+                }
+            }
+
             $booking = InspectionBooking::create([
                 'homeowner_id' => $userId,
                 'property_address' => $request->property_address,
@@ -132,8 +151,8 @@ class InspectionBookingRequestCotroller extends Controller
                 'scheduled_shift' => $request->scheduled_shift,
                 'urgent_status' => $request->urgent_status ? 1 : 0,
                 'status' => 'pending',
-                'latitude' => $request->latitude,
-                'longitude' => $request->longitude,
+                'latitude' => $lat,
+                'longitude' => $lng,
                 'isRescheduled' => 0
             ]);
 
@@ -626,6 +645,7 @@ class InspectionBookingRequestCotroller extends Controller
 
             if (!is_null($inspectorLat) && !is_null($inspectorLng)) {
                 
+                // Haversine formula (6371 km) calculating distance between inspector profile and inspection_bookings location
                 $haversineSql = "(6371 * acos(least(1.0, greatest(-1.0, 
                     cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) 
                     + sin(radians(?)) * sin(radians(latitude))
@@ -638,14 +658,14 @@ class InspectionBookingRequestCotroller extends Controller
                     ->having('distance_km', '<=', $maxDistanceKm)
                     ->orderBy('distance_km', 'asc');
             } else {
-                $query->latest();
+                $query->latest('inspection_bookings.created_at');
             }
 
             // Apply filter logic
             if ($filter === 'urgent') {
-                $query->where('urgent_status', true);
+                $query->where('inspection_bookings.urgent_status', true);
             } elseif ($filter === 'rescheduled') {
-                $query->where('isRescheduled', true);
+                $query->where('inspection_bookings.isRescheduled', true);
             } elseif ($filter === 'new') {
                 $query->limit(5);
             }
@@ -679,8 +699,8 @@ class InspectionBookingRequestCotroller extends Controller
                     'note' => $booking->note,
                     'price' => $payment ? number_format($payment->subtotal, 2) : null,
                     'distance' => $distanceFormatted,
-                    'latitude' => $booking->latitude,
-                    'longitude' => $booking->longitude,
+                    'latitude' => $booking->latitude ? (float) $booking->latitude : null,
+                    'longitude' => $booking->longitude ? (float) $booking->longitude : null,
                 ];
             });
 
