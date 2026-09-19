@@ -180,6 +180,25 @@ class InspectionBookingController extends Controller
                 $imagePath = $request->file('property_img')->store('inspections', 'public');
             }
 
+            $lat = $request->latitude;
+            $lng = $request->longitude;
+
+            if (is_null($lat) || is_null($lng)) {
+                $homeowner = User::with('profile')->find($userId);
+                if ($homeowner && $homeowner->profile) {
+                    $lat = $lat ?? $homeowner->profile->latitude;
+                    $lng = $lng ?? $homeowner->profile->longitude;
+                }
+
+                if ((is_null($lat) || is_null($lng)) && !empty($request->zip_code)) {
+                    $coords = \App\Services\GeoLocationService::getCoordinatesByZipCode($request->zip_code);
+                    if ($coords) {
+                        $lat = $lat ?? $coords['latitude'];
+                        $lng = $lng ?? $coords['longitude'];
+                    }
+                }
+            }
+
             $booking = InspectionBooking::create([
                 'homeowner_id'     => $userId,
                 'property_address' => $request->property_address,
@@ -193,8 +212,8 @@ class InspectionBookingController extends Controller
                 'scheduled_shift'  => $request->scheduled_shift,
                 'urgent_status'    => $request->urgent_status ? 1 : 0,
                 'status'           => 'pending',
-                'latitude'         => $request->latitude,
-                'longitude'        => $request->longitude,
+                'latitude'         => $lat,
+                'longitude'        => $lng,
                 'isRescheduled'    => 0
             ]);
 
