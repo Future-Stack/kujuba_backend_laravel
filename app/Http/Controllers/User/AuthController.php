@@ -102,8 +102,8 @@ class AuthController extends Controller
 
             'zip_code.*'            => 'string|max:20',
 
-            'latitude'              => 'required|numeric',
-            'longitude'             => 'required|numeric',
+            'latitude'              => 'nullable|numeric',
+            'longitude'             => 'nullable|numeric',
 
             // Default: 50 miles
             'service_radius'        => 'nullable|numeric|min:1|max:500',
@@ -302,8 +302,8 @@ class AuthController extends Controller
                 'zip_code'              => 'nullable|array|max:3',
                 'zip_code.*'            => 'string|max:20',
 
-                'latitude'              => 'required|numeric',
-                'longitude'             => 'required|numeric',
+                'latitude'              => 'nullable|numeric',
+                'longitude'             => 'nullable|numeric',
 
                 // Default remains 50 miles
                 'service_radius'        => 'nullable|numeric|min:1|max:500',
