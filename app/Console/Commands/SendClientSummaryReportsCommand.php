@@ -69,7 +69,7 @@ class SendClientSummaryReportsCommand extends Command
                         $schedule->inspection_status === 'all' ? null : $schedule->inspection_status
                     );
 
-                    $reportData = $reportResult['reports'] ?? null;
+                    $reportData = $reportResult['reports'] ?? $reportResult;
 
                     if (!$reportData) {
                         $this->warn("No report data generated for schedule #{$schedule->id}.");

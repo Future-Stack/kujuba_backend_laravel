@@ -24,17 +24,19 @@ class ClientReportService
     {
         $dateRange = $this->resolveDateRange($frequency, $startDate, $endDate);
 
-        $clientQuery = User::where('user_type', 'client')->with('profile');
         if ($clientId) {
-            $clientQuery->where('id', $clientId);
-        }
+            $client = User::where('user_type', 'client')->with('profile')->find($clientId);
+            $clientInfo = [
+                'id'           => $client?->id,
+                'name'         => $client ? trim(($client->first_name ?? '') . ' ' . ($client->last_name ?? '')) : 'Corporate Client',
+                'company_name' => $client?->profile?->company_name ?: ($client ? trim(($client->first_name ?? '') . ' ' . ($client->last_name ?? '')) : 'Corporate Client'),
+                'client_type'  => $client?->profile?->client_type ?: 'Corporate Partner',
+                'email'        => $client?->email ?? 'N/A',
+                'phone'        => $client?->profile?->phone ?: 'N/A',
+                'address'      => $client?->profile?->address ?: 'N/A',
+            ];
 
-        $clients = $clientQuery->get();
-
-        $clientReports = [];
-
-        foreach ($clients as $client) {
-            $bookingsQuery = InspectionBooking::where('client_id', $client->id)
+            $bookingsQuery = InspectionBooking::where('client_id', $clientId)
                 ->whereBetween('booking_date', [$dateRange['start'], $dateRange['end']])
                 ->with([
                     'homeowner.profile',
@@ -42,77 +44,89 @@ class ClientReportService
                     'assignment.inspector.profile',
                     'assignment.inspectionReport'
                 ]);
-
-            if ($status && $status !== 'all') {
-                $bookingsQuery->where('status', $status);
-            }
-
-            $bookings = $bookingsQuery->latest('booking_date')->get();
-
-            // Calculate Metrics
-            $totalCount = $bookings->count();
-            $completedCount = $bookings->where('status', 'completed')->count();
-            $pendingCount = $bookings->where('status', 'pending')->count();
-            $inProgressCount = $bookings->filter(fn($b) => in_array($b->status, ['assigned', 'started', 'reports']))->count();
-            $cancelledCount = $bookings->where('status', 'cancelled')->count();
-
-            // Transform Inspections List
-            $inspectionsList = $bookings->map(function ($booking) {
-                $report = $booking->assignment?->inspectionReport;
-
-                return [
-                    'booking_id'        => $booking->id,
-                    'reference_no'      => 'INS-' . str_pad($booking->id, 6, '0', STR_PAD_LEFT),
-                    'homeowner_name'    => trim(($booking->homeowner?->first_name ?? '') . ' ' . ($booking->homeowner?->last_name ?? '')) ?: 'N/A',
-                    'homeowner_email'   => $booking->homeowner?->email ?? 'N/A',
-                    'homeowner_phone'   => $booking->homeowner?->profile?->phone ?? 'N/A',
-                    'property_address'  => $booking->property_address,
-                    'property_type'     => $booking->property_type,
-                    'inspection_types'  => $booking->inspectionTypes->pluck('title')->implode(', ') ?: 'Standard Inspection',
-                    'inspector_name'    => trim(($booking->assignment?->inspector?->first_name ?? '') . ' ' . ($booking->assignment?->inspector?->last_name ?? '')) ?: 'Unassigned',
-                    'inspector_email'   => $booking->assignment?->inspector?->email ?? 'N/A',
-                    'scheduled_date'    => $booking->scheduled_date ? $booking->scheduled_date->format('Y-m-d') : ($booking->booking_date ? $booking->booking_date->format('Y-m-d') : 'Pending'),
-                    'scheduled_time'    => $booking->scheduled_time ?: 'Pending',
-                    'status'            => ucfirst($booking->status),
-                    'report_available'  => $report && $report->status === 'completed' ? true : false,
-                    'report_file_url'   => ($report && $report->report_file) ? asset('storage/' . $report->report_file) : null,
-                    'report_completed_at' => $report?->created_at?->format('Y-m-d H:i') ?? null,
-                ];
-            });
-
-            $clientReports[] = [
-                'client' => [
-                    'id'           => $client->id,
-                    'name'         => trim(($client->first_name ?? '') . ' ' . ($client->last_name ?? '')),
-                    'company_name' => $client->profile?->company_name ?: 'N/A',
-                    'client_type'  => $client->profile?->client_type ?: 'Corporate Client',
-                    'email'        => $client->email,
-                    'phone'        => $client->profile?->phone ?: 'N/A',
-                    'address'      => $client->profile?->address ?: 'N/A',
-                ],
-                'period' => [
-                    'frequency'  => ucfirst($frequency),
-                    'start_date' => $dateRange['start']->format('Y-m-d'),
-                    'end_date'   => $dateRange['end']->format('Y-m-d'),
-                    'generated_at' => Carbon::now()->format('Y-m-d H:i:s'),
-                ],
-                'summary' => [
-                    'total_inspections'     => $totalCount,
-                    'completed_inspections' => $completedCount,
-                    'in_progress_inspections' => $inProgressCount,
-                    'pending_inspections'   => $pendingCount,
-                    'cancelled_inspections' => $cancelledCount,
-                    'completion_rate'       => $totalCount > 0 ? round(($completedCount / $totalCount) * 100, 1) . '%' : '0%',
-                ],
-                'inspections' => $inspectionsList,
+        } else {
+            $clientInfo = [
+                'id'           => null,
+                'name'         => 'All Corporate Clients & Direct Bookings',
+                'company_name' => 'All Corporate Clients',
+                'client_type'  => 'All Partners',
+                'email'        => 'admin@connecttoinspect.com',
+                'phone'        => 'N/A',
+                'address'      => 'All Territories',
             ];
+
+            $bookingsQuery = InspectionBooking::whereBetween('booking_date', [$dateRange['start'], $dateRange['end']])
+                ->with([
+                    'homeowner.profile',
+                    'inspectionTypes',
+                    'assignment.inspector.profile',
+                    'assignment.inspectionReport',
+                    'client.profile'
+                ]);
         }
+
+        if ($status && $status !== 'all') {
+            $bookingsQuery->where('status', $status);
+        }
+
+        $bookings = $bookingsQuery->latest('booking_date')->get();
+
+        // Calculate Metrics
+        $totalCount = $bookings->count();
+        $completedCount = $bookings->where('status', 'completed')->count();
+        $pendingCount = $bookings->where('status', 'pending')->count();
+        $inProgressCount = $bookings->filter(fn($b) => in_array($b->status, ['assigned', 'started', 'reports']))->count();
+        $cancelledCount = $bookings->where('status', 'cancelled')->count();
+
+        // Transform Inspections List
+        $inspectionsList = $bookings->map(function ($booking) {
+            $report = $booking->assignment?->inspectionReport;
+
+            return [
+                'booking_id'          => $booking->id,
+                'reference_no'        => 'INS-' . str_pad($booking->id, 6, '0', STR_PAD_LEFT),
+                'client_name'         => $booking->client?->profile?->company_name ?: ($booking->client ? trim(($booking->client->first_name ?? '') . ' ' . ($booking->client->last_name ?? '')) : 'Direct Booking'),
+                'homeowner_name'      => trim(($booking->homeowner?->first_name ?? '') . ' ' . ($booking->homeowner?->last_name ?? '')) ?: 'N/A',
+                'homeowner_email'     => $booking->homeowner?->email ?? 'N/A',
+                'homeowner_phone'     => $booking->homeowner?->profile?->phone ?? 'N/A',
+                'property_address'    => $booking->property_address,
+                'property_type'       => $booking->property_type,
+                'inspection_types'    => $booking->inspectionTypes->pluck('title')->implode(', ') ?: 'Standard Inspection',
+                'inspector_name'      => trim(($booking->assignment?->inspector?->first_name ?? '') . ' ' . ($booking->assignment?->inspector?->last_name ?? '')) ?: 'Unassigned',
+                'inspector_email'     => $booking->assignment?->inspector?->email ?? 'N/A',
+                'scheduled_date'      => $booking->scheduled_date ? $booking->scheduled_date->format('Y-m-d') : ($booking->booking_date ? $booking->booking_date->format('Y-m-d') : 'Pending'),
+                'scheduled_time'      => $booking->scheduled_time ?: 'Pending',
+                'status'              => ucfirst($booking->status),
+                'report_available'    => $report && $report->status === 'completed' ? true : false,
+                'report_file_url'     => ($report && $report->report_file) ? asset('storage/' . $report->report_file) : null,
+                'report_completed_at' => $report?->created_at?->format('Y-m-d H:i') ?? null,
+            ];
+        });
+
+        $reportStructure = [
+            'client' => $clientInfo,
+            'period' => [
+                'frequency'    => ucfirst($frequency),
+                'start_date'   => $dateRange['start']->format('Y-m-d'),
+                'end_date'     => $dateRange['end']->format('Y-m-d'),
+                'generated_at' => Carbon::now()->format('Y-m-d H:i:s'),
+            ],
+            'summary' => [
+                'total_inspections'       => $totalCount,
+                'completed_inspections'   => $completedCount,
+                'in_progress_inspections' => $inProgressCount,
+                'pending_inspections'     => $pendingCount,
+                'cancelled_inspections'   => $cancelledCount,
+                'completion_rate'         => $totalCount > 0 ? round(($completedCount / $totalCount) * 100, 1) . '%' : '0%',
+            ],
+            'inspections' => $inspectionsList,
+        ];
 
         return [
             'frequency'    => $frequency,
             'period_label' => $dateRange['label'],
-            'total_clients'=> count($clientReports),
-            'reports'      => $clientId && count($clientReports) > 0 ? $clientReports[0] : $clientReports,
+            'total_count'  => $totalCount,
+            'reports'      => $reportStructure,
         ];
     }
 
