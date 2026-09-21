@@ -324,7 +324,7 @@ class InHouseAdminController extends Controller
 
         $request->validate([
             'first_name'    => 'required|string|max:255',
-            'last_name'     => 'required|string|max:255',
+            'last_name'     => 'nullable|string|max:255',
             'email'         => 'required|email|unique:users,email',
             'password'      => ['required', 'string', Password::min(8)],
             'phone'         => 'nullable|string|max:50',
@@ -437,8 +437,8 @@ class InHouseAdminController extends Controller
         $validKeys = self::getAllValidPermissionKeys();
 
         $request->validate([
-            'first_name'    => 'required|string|max:255',
-            'last_name'     => 'required|string|max:255',
+            'first_name'    => 'nullable|string|max:255',
+            'last_name'     => 'nullable|string|max:255',
             'email'         => 'required|email|unique:users,email,' . $admin->id,
             'password'      => ['nullable', 'string', Password::min(8)],
             'phone'         => 'nullable|string|max:50',
