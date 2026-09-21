@@ -32,9 +32,7 @@ use App\Http\Controllers\Admin\AdminClientReportController;
 use App\Http\Controllers\Admin\InHouseAdminController;
 use App\Http\Controllers\StripeController;
 use App\Http\Controllers\InspectorPaymentHistoryController;
-
-
-
+use Illuminate\Support\Facades\Artisan;
 
 Route::prefix('v1')->group(function () {
     Route::get('/', function () {
@@ -70,8 +68,8 @@ Route::prefix('v1')->group(function () {
 
         //inspections types
 
-   Route::get('/inspection-types', [InspectionTypeController::class, 'index']);
-   Route::get('/inspection-types/{id}', [InspectionTypeController::class, 'show']);
+    Route::get('/inspection-types', [InspectionTypeController::class, 'index']);
+    Route::get('/inspection-types/{id}', [InspectionTypeController::class, 'show']);
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/change-password', [AuthController::class, 'changePassword']);
@@ -125,9 +123,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('/inspection-types/{id}', [InspectionTypeController::class, 'destroy']);
     });
 
-    //Rehana Mim
-
-    //auto payment
+        //auto payment
 
         Route::post('/stripe/connect/{userId}', [StripeController::class, 'createConnectAccount']);
         Route::post('/stripe/onboarding/{userId}', [StripeController::class, 'onboarding']);
@@ -141,7 +137,7 @@ Route::prefix('v1')->group(function () {
 
 
 
-//Inspector payment history route
+        //Inspector payment history route
         Route::prefix('inspector')->middleware('auth:sanctum')->group(function () {
             Route::get('/earnings/overview', [InspectorPaymentHistoryController::class, 'overview']);
             Route::get('/payouts', [InspectorPaymentHistoryController::class, 'index']);
@@ -168,7 +164,7 @@ Route::prefix('v1')->group(function () {
         });
 
 
- // admin Inspection report routes
+        // admin Inspection report routes
         Route::prefix('admin/reports')->group(function () {
 
             Route::get('/stats', [AdminInspectionReportController::class, 'stats']);
@@ -211,12 +207,18 @@ Route::prefix('v1')->group(function () {
 
         });
 
-//Admin inspector dashbaord route
+        //Admin inspector dashbaord route
         Route::prefix('admin/inspectors')->group(function () {
 
         Route::get('/stats', [InspectorManagementController::class, 'stats']);
 
+        // Inspector Earnings & Payout Status (All List & Summary)
+        Route::get('/earnings', [InspectorManagementController::class, 'earningsList']);
+
         Route::get('/', [InspectorManagementController::class, 'index']);
+
+        // Individual Inspector Payout Breakdown
+        Route::get('/{id}/payout-history', [InspectorManagementController::class, 'inspectorPayoutHistory']);
 
         Route::get('/{id}', [InspectorManagementController::class, 'show']);
 
@@ -253,8 +255,8 @@ Route::prefix('v1')->group(function () {
     });
 
     // In-House Admin / Staff & Permission Management Routes (Super Admin Access Only)
-  Route::middleware('auth:sanctum')->group(function () {
-    foreach (['admin/inhouse-admins' => 'admin.inhouse-admins.', 'inhouse-admins' => 'inhouse-admins.'] as $prefix => $namePrefix) {
+    Route::middleware('auth:sanctum')->group(function () {
+        foreach (['admin/inhouse-admins' => 'admin.inhouse-admins.', 'inhouse-admins' => 'inhouse-admins.'] as $prefix => $namePrefix) {
         Route::prefix($prefix)->name($namePrefix)->group(function () {
             // 1. Permission List for Checkboxes
             Route::get('/available-permissions', [InHouseAdminController::class, 'availablePermissions'])->name('permissions');
