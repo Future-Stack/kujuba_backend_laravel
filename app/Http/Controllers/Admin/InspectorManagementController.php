@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Review;
 use App\Models\InspectionAssign;
 use App\Models\InspectionPayment;
+use App\Models\InspectorPayout;
 use Illuminate\Http\Request;
 
 
@@ -317,5 +318,212 @@ public function show($id)
             'success' => true,
             'message' => 'Inspector reactivated successfully'
         ]);
+    }
+
+    /**
+     * 💰 INSPECTOR EARNINGS & PAYOUT STATUS (ALL INSPECTORS LIST)
+     */
+    public function earningsList(Request $request)
+    {
+        try {
+            // Summary metrics for top cards
+            $totalDisbursed = (float) InspectorPayout::where('status', 'paid')->sum('amount');
+            $totalPendingPayout = (float) InspectorPayout::whereIn('status', ['pending', 'processing'])->sum('amount');
+            $totalInspectorsCount = User::where('user_type', 'inspector')->count();
+            $totalConnectedStripe = User::where('user_type', 'inspector')
+                ->whereHas('profile', fn($q) => $q->whereNotNull('stripe_account_id')->where('stripe_account_id', '!=', ''))
+                ->count();
+
+            $query = User::with([
+                'profile.inspectionTypes',
+                'inspectorPayouts' => fn($q) => $q->latest()
+            ])
+            ->where('user_type', 'inspector');
+
+            // Search filter
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('first_name', 'like', "%{$search}%")
+                      ->orWhere('last_name', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%");
+                });
+            }
+
+            // User status filter (active, pending, suspended)
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+
+            // Stripe connection filter
+            if ($request->filled('stripe_status')) {
+                if ($request->stripe_status === 'connected') {
+                    $query->whereHas('profile', fn($q) => $q->whereNotNull('stripe_account_id')->where('stripe_account_id', '!=', ''));
+                } elseif ($request->stripe_status === 'not_connected') {
+                    $query->where(function ($q) {
+                        $q->whereDoesntHave('profile')
+                          ->orWhereHas('profile', fn($pq) => $pq->whereNull('stripe_account_id')->orWhere('stripe_account_id', ''));
+                    });
+                }
+            }
+
+            $perPage = (int) $request->get('per_page', 15);
+            $inspectors = $query->latest()->paginate($perPage);
+
+            $inspectors->getCollection()->transform(function ($inspector) {
+                $payouts = $inspector->inspectorPayouts ?? collect();
+
+                $totalPaid = (float) $payouts->where('status', 'paid')->sum('amount');
+                $totalPending = (float) $payouts->whereIn('status', ['pending', 'processing'])->sum('amount');
+                $totalFailed = (float) $payouts->where('status', 'failed')->sum('amount');
+                $totalEarned = $totalPaid + $totalPending;
+
+                $latestPayout = $payouts->first();
+                $completedCount = InspectionAssign::where('inspector_id', $inspector->id)
+                    ->where('status', 'completed')
+                    ->count();
+
+                $stripeAccountId = $inspector->profile?->stripe_account_id;
+
+                return [
+                    'id'                        => $inspector->id,
+                    'name'                      => trim(($inspector->first_name ?? '') . ' ' . ($inspector->last_name ?? '')),
+                    'email'                     => $inspector->email,
+                    'phone'                     => $inspector->profile?->phone,
+                    'image'                     => $inspector->profile?->profile_img
+                        ? asset('storage/' . $inspector->profile->profile_img)
+                        : null,
+                    'status'                    => $inspector->status,
+                    'stripe_connected'          => !empty($stripeAccountId),
+                    'stripe_account_id'         => $stripeAccountId,
+                    'completed_inspections'     => $completedCount,
+                    'total_earned'              => round($totalEarned, 2),
+                    'total_paid'                => round($totalPaid, 2),
+                    'total_pending'             => round($totalPending, 2),
+                    'total_failed'              => round($totalFailed, 2),
+                    'total_earned_formatted'    => '$' . number_format($totalEarned, 2),
+                    'total_paid_formatted'      => '$' . number_format($totalPaid, 2),
+                    'total_pending_formatted'   => '$' . number_format($totalPending, 2),
+                    'latest_payout_status'      => $latestPayout ? $latestPayout->status : 'no_payout',
+                    'last_payout_date'          => optional($latestPayout?->paid_at ?? $latestPayout?->created_at)->format('d M Y, h:i A'),
+                    'created_at'                => optional($inspector->created_at)->format('d M Y'),
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data'    => [
+                    'summary' => [
+                        'total_disbursed'           => round($totalDisbursed, 2),
+                        'total_disbursed_formatted' => '$' . number_format($totalDisbursed, 2),
+                        'total_pending_payout'      => round($totalPendingPayout, 2),
+                        'total_pending_formatted'   => '$' . number_format($totalPendingPayout, 2),
+                        'total_inspectors'          => $totalInspectorsCount,
+                        'stripe_connected_count'    => $totalConnectedStripe,
+                    ],
+                    'inspectors' => $inspectors->items(),
+                    'pagination' => [
+                        'current_page' => $inspectors->currentPage(),
+                        'next_page'    => $inspectors->hasMorePages(),
+                        'per_page'     => $inspectors->perPage(),
+                        'total'        => $inspectors->total(),
+                        'last_page'    => $inspectors->lastPage(),
+                    ]
+                ]
+            ], 200);
+
+        } catch (\Throwable $e) {
+            \Log::error('Inspector earnings list failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load inspector earnings list: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * 📜 SINGLE INSPECTOR PAYOUT / TRANSACTION HISTORY (ADMIN VIEW)
+     */
+    public function inspectorPayoutHistory($id, Request $request)
+    {
+        try {
+            $inspector = User::with(['profile.inspectionTypes'])
+                ->where('user_type', 'inspector')
+                ->findOrFail($id);
+
+            $payoutsQuery = InspectorPayout::with([
+                'inspectionAssign.inspectionBooking.homeowner',
+                'inspectionAssign.inspectionBooking.inspectionTypes'
+            ])
+            ->where('inspector_id', $id);
+
+            if ($request->filled('status')) {
+                $payoutsQuery->where('status', $request->status);
+            }
+
+            $perPage = (int) $request->get('per_page', 15);
+            $payouts = $payoutsQuery->latest()->paginate($perPage);
+
+            $payouts->getCollection()->transform(function ($payout) {
+                $assign    = $payout->inspectionAssign;
+                $booking   = $assign?->inspectionBooking;
+                $type      = $booking?->inspectionTypes?->first();
+                $homeowner = $booking?->homeowner;
+
+                return [
+                    'payout_id'          => $payout->id,
+                    'booking_id'         => $booking?->id,
+                    'inspection_title'   => $type?->title ?? 'Inspection',
+                    'property_address'   => $booking?->property_address,
+                    'homeowner_name'     => $homeowner ? trim($homeowner->first_name . ' ' . $homeowner->last_name) : 'N/A',
+                    'amount'             => (float) $payout->amount,
+                    'amount_formatted'   => '$' . number_format($payout->amount, 2),
+                    'platform_fee'       => (float) ($payout->platform_fee ?? 0),
+                    'status'             => $payout->status,
+                    'is_disbursed'       => (bool) $payout->is_disbursed,
+                    'method'             => $payout->method ?? 'stripe',
+                    'stripe_transfer_id' => $payout->stripe_transfer_id,
+                    'paid_at'            => optional($payout->paid_at)->format('d M Y, h:i A'),
+                    'created_at'         => optional($payout->created_at)->format('d M Y, h:i A'),
+                ];
+            });
+
+            $totalEarned = (float) InspectorPayout::where('inspector_id', $id)->where('status', 'paid')->sum('amount');
+            $pendingPayout = (float) InspectorPayout::where('inspector_id', $id)->whereIn('status', ['pending', 'processing'])->sum('amount');
+
+            return response()->json([
+                'success' => true,
+                'data'    => [
+                    'inspector' => [
+                        'id'                     => $inspector->id,
+                        'name'                   => trim(($inspector->first_name ?? '') . ' ' . ($inspector->last_name ?? '')),
+                        'email'                  => $inspector->email,
+                        'phone'                  => $inspector->profile?->phone,
+                        'status'                 => $inspector->status,
+                        'stripe_connected'       => !empty($inspector->profile?->stripe_account_id),
+                        'stripe_account_id'      => $inspector->profile?->stripe_account_id,
+                        'total_paid'             => round($totalEarned, 2),
+                        'total_paid_formatted'   => '$' . number_format($totalEarned, 2),
+                        'total_pending'          => round($pendingPayout, 2),
+                        'total_pending_formatted'=> '$' . number_format($pendingPayout, 2),
+                    ],
+                    'payouts'    => $payouts->items(),
+                    'pagination' => [
+                        'current_page' => $payouts->currentPage(),
+                        'next_page'    => $payouts->hasMorePages(),
+                        'per_page'     => $payouts->perPage(),
+                        'total'        => $payouts->total(),
+                        'last_page'    => $payouts->lastPage(),
+                    ]
+                ]
+            ], 200);
+
+        } catch (\Throwable $e) {
+            \Log::error('Inspector payout history failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load inspector payout history: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

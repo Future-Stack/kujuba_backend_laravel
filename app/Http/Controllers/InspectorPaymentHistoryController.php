@@ -57,6 +57,7 @@ class InspectorPaymentHistoryController extends Controller
                 'this_month_earning' => round($thisMonthEarning, 2),
                 'completed_jobs' => $completedJobs,
                 'rating' => round($rating ?? 0, 1),
+                'payout_notice' => 'Payouts are processed via Stripe and typically take 2–5 business days to reflect in your bank account.',
 
                 'analytics' => [
                     'weekly_income' => round($weeklyIncome, 2),
@@ -84,6 +85,7 @@ class InspectorPaymentHistoryController extends Controller
 
         return response()->json([
             'success' => true,
+            'payout_notice' => 'Payouts are processed via Stripe and typically take 2–5 business days to reflect in your bank account.',
             'data' => $payouts->map(function ($payout) {
 
                 $assign  = $payout->inspectionAssign;
@@ -115,56 +117,57 @@ class InspectorPaymentHistoryController extends Controller
      * 🟦 Single Payout Details
      */
     public function show($id)
-{
-    $userId = auth()->id();
+    {
+        $userId = auth()->id();
 
-    $payout = InspectorPayout::with([
-        'inspectionAssign.inspectionBooking.payment',
-        'inspectionAssign.inspectionBooking.inspectionTypes'
-    ])
-    ->where('id', $id)
-    ->where('inspector_id', $userId)
-    ->where('status', 'paid')
-    ->firstOrFail();
+        $payout = InspectorPayout::with([
+            'inspectionAssign.inspectionBooking.payment',
+            'inspectionAssign.inspectionBooking.inspectionTypes'
+        ])
+        ->where('id', $id)
+        ->where('inspector_id', $userId)
+        ->where('status', 'paid')
+        ->firstOrFail();
 
-    $assign  = $payout->inspectionAssign;
-    $booking = $assign?->inspectionBooking;
-    $payment = $booking?->payment;
-    $type    = $booking?->inspectionTypes?->first();
+        $assign  = $payout->inspectionAssign;
+        $booking = $assign?->inspectionBooking;
+        $payment = $booking?->payment;
+        $type    = $booking?->inspectionTypes?->first();
 
-    return response()->json([
-        'success' => true,
-        'data' => [
-            'title' => $type?->title ?? 'Inspection',
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'title' => $type?->title ?? 'Inspection',
 
-            'image' => $type?->img
-                ? asset('storage/' . $type->img)
-                : null,
+                'image' => $type?->img
+                    ? asset('storage/' . $type->img)
+                    : null,
 
-            'status' => ucfirst($payout->status),
+                'status' => ucfirst($payout->status),
 
-            'payment_received' => true,
+                'payment_received' => true,
 
-            'amount' => (float) $payout->amount,
+                'amount' => (float) $payout->amount,
 
-            'address' => $booking?->property_address,
+                'address' => $booking?->property_address,
 
-            'completed_at' => optional($assign?->updated_at)
-                ->format('M d, Y h:i A'),
+                'completed_at' => optional($assign?->updated_at)
+                    ->format('M d, Y h:i A'),
 
-            'paid_at' => optional($payout->paid_at)
-                ->format('M d, Y h:i A'),
+                'paid_at' => optional($payout->paid_at)
+                    ->format('M d, Y h:i A'),
 
-            'transaction_id' => $payout->transaction_id,
-            'stripe_transfer_id' => $payout->stripe_transfer_id,
+                'transaction_id' => $payout->transaction_id,
+                'stripe_transfer_id' => $payout->stripe_transfer_id,
+                'payout_notice' => 'Payouts are processed via Stripe and typically take 2–5 business days to reflect in your bank account.',
 
-            // ✅ SAME STRUCTURE AS YOU USED
-            'payment_breakdown' => [
-                'inspection_fee' => (float) ($payment?->total ?? 0),
-                'platform_fee' => (float) ($payment?->platform_fee ?? 0),
-                'total_payout' => (float) ($payment?->inspector_share ?? 0),
-            ],
-        ]
-    ]);
-}
+                // ✅ SAME STRUCTURE AS YOU USED
+                'payment_breakdown' => [
+                    'inspection_fee' => (float) ($payment?->total ?? 0),
+                    'platform_fee' => (float) ($payment?->platform_fee ?? 0),
+                    'total_payout' => (float) ($payment?->inspector_share ?? 0),
+                ],
+            ]
+        ]);
+    }
 }
