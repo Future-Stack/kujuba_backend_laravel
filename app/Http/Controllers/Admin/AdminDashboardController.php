@@ -18,131 +18,129 @@ class AdminDashboardController extends Controller
         $now = now();
         $lastMonth = now()->subMonth();
 
-       // =========================
-                // BASIC STATS
-                // =========================
+        $lastMonthStart = $lastMonth->copy()->startOfMonth();
+        $lastMonthEnd   = $lastMonth->copy()->endOfMonth();
+        $nowStart       = $now->copy()->startOfMonth();
+        $nowEnd         = $now->copy()->endOfMonth();
 
-                $totalRevenue = InspectionPayment::where('status', 'paid')->sum('total');
+        // =========================
+        // BASIC STATS
+        // =========================
 
-                $totalUsers = User::where('user_type', 'homeowner')->count();
+        $totalRevenue = InspectionPayment::where('payment_type', 'inspection_fee')
+            ->where('status', 'paid')
+            ->sum('total');
 
-                $totalInspectors = User::where('user_type', 'inspector')->count();
+        $totalUsers = User::where('user_type', 'homeowner')->count();
 
-                // Pending Inspector Approvals
-                $pendingInspectors = User::where('user_type', 'inspector')
-                    ->where('status', 'pending')
-                    ->count();
+        $totalInspectors = User::where('user_type', 'inspector')->count();
 
-                // Pending Booking Requests
-                $pendingInspections = InspectionBooking::where('status', 'pending')
-                    ->count();
+        // Pending Inspector Approvals
+        $pendingInspectors = User::where('user_type', 'inspector')
+            ->where('status', 'pending')
+            ->count();
 
-                $activeInspections = InspectionAssign::where('status', 'started')->count();
+        // Pending Booking Requests
+        $pendingInspections = InspectionBooking::where('status', 'pending')
+            ->count();
 
-                $completedInspections = InspectionAssign::where('status', 'completed')->count();
+        $activeInspections = InspectionAssign::whereIn('status', ['assigned', 'started', 'rescheduled', 'reports'])->count();
 
-                $cancelledInspections = InspectionAssign::where('status', 'cancelled')->count();
+        $completedInspections = InspectionAssign::where('status', 'completed')->count();
+
+        $cancelledInspections = InspectionAssign::where('status', 'cancelled')->count();
 
         // =========================
         // GROWTH HELPER USAGE
         // =========================
-       // Pending Inspector Growth
 
+        $revenueGrowth = $this->growth(
+            InspectionPayment::where('payment_type', 'inspection_fee')
+                ->where('status', 'paid')
+                ->whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])
+                ->sum('total'),
 
-       $revenueGrowth = $this->growth(
-    InspectionPayment::where('status', 'paid')
-        ->whereBetween('created_at', [
-            $lastMonth->copy()->startOfMonth(),
-            $lastMonth->copy()->endOfMonth(),
-        ])
-        ->sum('total'),
+            InspectionPayment::where('payment_type', 'inspection_fee')
+                ->where('status', 'paid')
+                ->whereBetween('created_at', [$nowStart, $nowEnd])
+                ->sum('total')
+        );
 
-    InspectionPayment::where('status', 'paid')
-        ->whereBetween('created_at', [
-            $now->copy()->startOfMonth(),
-            $now->copy()->endOfMonth(),
-        ])
-        ->sum('total')
-);
+        $userGrowth = $this->growth(
+            User::where('user_type', 'homeowner')
+                ->whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])
+                ->count(),
 
+            User::where('user_type', 'homeowner')
+                ->whereBetween('created_at', [$nowStart, $nowEnd])
+                ->count()
+        );
 
-$userGrowth = $this->growth(
-    User::where('user_type', 'homeowner')
-        ->whereMonth('created_at', $lastMonth->month)
-        ->count(),
+        $inspectorGrowth = $this->growth(
+            User::where('user_type', 'inspector')
+                ->whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])
+                ->count(),
 
-    User::where('user_type', 'homeowner')
-        ->whereMonth('created_at', $now->month)
-        ->count()
-);
+            User::where('user_type', 'inspector')
+                ->whereBetween('created_at', [$nowStart, $nowEnd])
+                ->count()
+        );
 
-$inspectorGrowth = $this->growth(
-    User::where('user_type', 'inspector')
-        ->whereMonth('created_at', $lastMonth->month)
-        ->count(),
+        $pendingInspectorGrowth = $this->growth(
+            User::where('user_type', 'inspector')
+                ->where('status', 'pending')
+                ->whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])
+                ->count(),
 
-    User::where('user_type', 'inspector')
-        ->whereMonth('created_at', $now->month)
-        ->count()
-);
+            User::where('user_type', 'inspector')
+                ->where('status', 'pending')
+                ->whereBetween('created_at', [$nowStart, $nowEnd])
+                ->count()
+        );
 
+        // Pending Booking Growth
+        $pendingInspectionGrowth = $this->growth(
+            InspectionBooking::where('status', 'pending')
+                ->whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])
+                ->count(),
 
-$pendingInspectorGrowth = $this->growth(
-    User::where('user_type', 'inspector')
-        ->where('status', 'pending')
-        ->whereMonth('created_at', $lastMonth->month)
-        ->count(),
+            InspectionBooking::where('status', 'pending')
+                ->whereBetween('created_at', [$nowStart, $nowEnd])
+                ->count()
+        );
 
-    User::where('user_type', 'inspector')
-        ->where('status', 'pending')
-        ->whereMonth('created_at', $now->month)
-        ->count()
-);
+        // Active Inspections Growth
+        $activeGrowth = $this->growth(
+            InspectionAssign::whereIn('status', ['assigned', 'started', 'rescheduled', 'reports'])
+                ->whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])
+                ->count(),
 
-// Pending Booking Growth
-$pendingInspectionGrowth = $this->growth(
-    InspectionBooking::where('status', 'pending')
-        ->whereMonth('created_at', $lastMonth->month)
-        ->count(),
+            InspectionAssign::whereIn('status', ['assigned', 'started', 'rescheduled', 'reports'])
+                ->whereBetween('created_at', [$nowStart, $nowEnd])
+                ->count()
+        );
 
-    InspectionBooking::where('status', 'pending')
-        ->whereMonth('created_at', $now->month)
-        ->count()
-);
+        // Completed Inspections Growth
+        $completedGrowth = $this->growth(
+            InspectionAssign::where('status', 'completed')
+                ->whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])
+                ->count(),
 
-// Active Inspections Growth (Started)
-$activeGrowth = $this->growth(
-    InspectionAssign::where('status', 'started')
-        ->whereMonth('created_at', $lastMonth->month)
-        ->count(),
+            InspectionAssign::where('status', 'completed')
+                ->whereBetween('created_at', [$nowStart, $nowEnd])
+                ->count()
+        );
 
-    InspectionAssign::where('status', 'started')
-        ->whereMonth('created_at', $now->month)
-        ->count()
-);
+        // Cancelled Inspections Growth
+        $cancelledGrowth = $this->growth(
+            InspectionAssign::where('status', 'cancelled')
+                ->whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])
+                ->count(),
 
-// Completed Inspections Growth
-$completedGrowth = $this->growth(
-    InspectionAssign::where('status', 'completed')
-        ->whereMonth('created_at', $lastMonth->month)
-        ->count(),
-
-    InspectionAssign::where('status', 'completed')
-        ->whereMonth('created_at', $now->month)
-        ->count()
-);
-
-
-// Cancelled Inspections Growth
-$cancelledGrowth = $this->growth(
-    InspectionAssign::where('status', 'cancelled')
-        ->whereMonth('created_at', $lastMonth->month)
-        ->count(),
-
-    InspectionAssign::where('status', 'cancelled')
-        ->whereMonth('created_at', $now->month)
-        ->count()
-);
+            InspectionAssign::where('status', 'cancelled')
+                ->whereBetween('created_at', [$nowStart, $nowEnd])
+                ->count()
+        );
 
 
 
@@ -216,7 +214,8 @@ $payoutLabel = (!$customDate && $range == 'weekly')
 // FINANCE METRICS
 // =========================
 $financeMetrics = [
-    'receive_payment' => (float) \App\Models\InspectionPayment::where('status', 'paid')
+    'receive_payment' => (float) \App\Models\InspectionPayment::where('payment_type', 'inspection_fee')
+        ->where('status', 'paid')
         ->whereBetween('created_at', [$start, $end])
         ->sum('total'),
 
@@ -232,6 +231,7 @@ $receiveData = \App\Models\InspectionPayment::select(
         DB::raw("$receiveLabel as label"),
         DB::raw('SUM(total) as receive')
     )
+    ->where('payment_type', 'inspection_fee')
     ->where('status', 'paid')
     ->whereBetween('created_at', [$start, $end])
     ->groupBy('label')
@@ -310,6 +310,7 @@ $topInspectors = User::where('user_type', 'inspector')
                 'inspection_payments.inspection_booking_id'
             )
             ->where('inspection_assigns.inspector_id', $user->id)
+            ->where('inspection_payments.payment_type', 'inspection_fee')
             ->where('inspection_payments.status', 'paid')
             ->sum('inspection_payments.inspector_share');
 
@@ -571,8 +572,9 @@ $topInspectionTypes = DB::table('booking_inspection_type as pivot')
 
     private function growth($last, $current)
     {
-        return $last > 0
-            ? round((($current - $last) / $last) * 100, 2)
-            : 0;
+        if ($last == 0) {
+            return $current > 0 ? 100.0 : 0.0;
+        }
+        return round((($current - $last) / $last) * 100, 2);
     }
 }

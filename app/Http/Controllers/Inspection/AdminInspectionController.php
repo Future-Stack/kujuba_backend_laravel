@@ -21,13 +21,13 @@ class AdminInspectionController extends Controller
             $previousMonthEnd = now()->subMonth()->endOfMonth();
 
             // Current month counts, 'rescheduled']
-            $activeCount     = InspectionAssign::where('status', 'started')->count();
+            $activeCount     = InspectionAssign::whereIn('status', ['assigned', 'started', 'rescheduled', 'reports'])->count();
             $completedCount  = InspectionAssign::where('status', 'completed')->count();
             $cancelledCount  = InspectionAssign::where('status', 'cancelled')->count();
             $pendingCount    = InspectionBooking::where('status', 'pending')->count();
 
             // Previous month counts (for percentage comparison)
-            $activePrev     = InspectionAssign::where('status', 'started')
+            $activePrev     = InspectionAssign::whereIn('status', ['assigned', 'started', 'rescheduled', 'reports'])
                 ->whereBetween('created_at', [$previousMonthStart, $previousMonthEnd])->count();
             $completedPrev  = InspectionAssign::where('status', 'completed')
                 ->whereBetween('created_at', [$previousMonthStart, $previousMonthEnd])->count();

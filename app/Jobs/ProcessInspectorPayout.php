@@ -111,6 +111,19 @@ class ProcessInspectorPayout implements ShouldQueue
                 'is_disbursed' => true,
             ]);
 
+            // notify inspector
+            try {
+                $inspector->notify(new \App\Notifications\PlatformNotification([
+                    'type'          => 'payout_disbursed',
+                    'title'         => 'Payment Disbursed',
+                    'message'       => 'Your payout of $' . number_format($payoutAmount, 2) . ' for inspection #' . $assign->id . ' has been disbursed via Stripe. Please allow 2–5 business days for it to reflect in your bank account.',
+                    'booking_id'    => $assign->inspection_booking_id,
+                    'sent_to_label' => 'inspector',
+                ]));
+            } catch (\Throwable $notifEx) {
+                Log::warning('Inspector payout notification failed: ' . $notifEx->getMessage());
+            }
+
             Log::info("Payout success", [
                 'assign_id' => $assign->id,
                 'payout_id' => $payout->id,

@@ -326,10 +326,20 @@ class InspectionReportController extends Controller
                     ]));
                 }
 
+                $assign = InspectionAssign::with('inspectionBooking.payment')->find($id);
+                $payoutAmount = $assign?->inspectionBooking?->payment?->inspector_share;
+                $amountFormatted = $payoutAmount ? '$' . number_format($payoutAmount, 2) : '';
+
                 return response()->json([
-                    'success' => true,
-                    'message' => 'Inspection completed successfully',
-                    'data'    => $this->formatReport($report)
+                    'success'       => true,
+                    'message'       => 'Inspection report submitted successfully. Your payment ' . ($amountFormatted ? "of {$amountFormatted} " : '') . 'has been disbursed. Please note that it typically takes 2–5 business days to reflect in your bank account.',
+                    'payout_notice' => [
+                        'status'             => 'disbursed',
+                        'amount'             => (float) ($payoutAmount ?? 0),
+                        'estimated_delivery' => '2-5 business days',
+                        'notice'             => 'Your payout has been initiated via Stripe. It typically takes 2 to 5 business days to reflect in your bank account depending on your bank processing schedule.'
+                    ],
+                    'data'          => $this->formatReport($report)
                 ]);
             }
 
