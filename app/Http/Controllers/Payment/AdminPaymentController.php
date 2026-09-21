@@ -29,15 +29,18 @@ class AdminPaymentController extends Controller
             $totalRefunded = InspectionPayment::where('payment_type', 'refund')
                 ->sum('refunded_amount');
 
-            // Optional: month-over-month growth (example logic)
+            // Month-over-month growth
             $lastMonthRevenue = InspectionPayment::where('payment_type', 'inspection_fee')
                 ->where('status', 'paid')
-                ->whereMonth('created_at', now()->subMonth()->month)
+                ->whereBetween('created_at', [
+                    now()->subMonth()->startOfMonth(),
+                    now()->subMonth()->endOfMonth()
+                ])
                 ->sum('total');
 
             $growthRate = $lastMonthRevenue > 0
                 ? round((($totalRevenue - $lastMonthRevenue) / $lastMonthRevenue) * 100, 2)
-                : 0;
+                : ($totalRevenue > 0 ? 100 : 0);
 
             return response()->json([
                 'success' => true,
