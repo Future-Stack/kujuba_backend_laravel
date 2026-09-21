@@ -35,19 +35,21 @@ class InspectorManagementController extends Controller
         : 100;
 
     // ================= ACTIVE INSPECTIONS =================
-    $activeInspections = InspectionAssign::whereIn('status', ['inspection', 'started'])->count();
+    $activeInspections = InspectionAssign::whereIn('status', ['assigned', 'started', 'rescheduled', 'reports'])->count();
 
-    $currentMonthActive = InspectionAssign::whereIn('status', ['inspection', 'started'])
+    $currentMonthActive = InspectionAssign::whereIn('status', ['assigned', 'started', 'rescheduled', 'reports'])
         ->whereMonth('created_at', now()->month)
+        ->whereYear('created_at', now()->year)
         ->count();
 
-    $lastMonthActive = InspectionAssign::whereIn('status', ['inspection', 'started'])
+    $lastMonthActive = InspectionAssign::whereIn('status', ['assigned', 'started', 'rescheduled', 'reports'])
         ->whereMonth('created_at', now()->subMonth()->month)
+        ->whereYear('created_at', now()->subMonth()->year)
         ->count();
 
     $activeGrowth = $lastMonthActive > 0
         ? round((($currentMonthActive - $lastMonthActive) / $lastMonthActive) * 100, 2)
-        : 100;
+        : ($currentMonthActive > 0 ? 100 : 0);
 
     // ================= PENDING APPROVAL =================
     $pendingApproval = User::where('user_type', 'inspector')
@@ -183,16 +185,17 @@ public function show($id)
         ->count();
 
     // ================= EARNINGS (FIXED - REAL SOURCE) =================
- // ================= EARNINGS =================
-$totalEarnings = InspectionPayment::join(
-        'inspection_assigns',
-        'inspection_assigns.inspection_booking_id',
-        '=',
-        'inspection_payments.inspection_booking_id'
-    )
-    ->where('inspection_assigns.inspector_id', $id)
-    ->where('inspection_payments.status', 'paid')
-    ->sum('inspection_payments.inspector_share');
+    // ================= EARNINGS =================
+    $totalEarnings = InspectionPayment::join(
+            'inspection_assigns',
+            'inspection_assigns.inspection_booking_id',
+            '=',
+            'inspection_payments.inspection_booking_id'
+        )
+        ->where('inspection_assigns.inspector_id', $id)
+        ->where('inspection_payments.payment_type', 'inspection_fee')
+        ->where('inspection_payments.status', 'paid')
+        ->sum('inspection_payments.inspector_share');
     // ================= RESPONSE =================
     return response()->json([
         'success' => true,
