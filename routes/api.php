@@ -252,6 +252,15 @@ Route::prefix('v1')->group(function () {
         Route::get('/download-pdf', [AdminClientReportController::class, 'downloadPdf']);
         Route::post('/download-pdf', [AdminClientReportController::class, 'downloadPdf']);
         Route::post('/send-email', [AdminClientReportController::class, 'sendEmail']);
+
+        // Schedule Automated Report Management (Daily, Weekly, Monthly)
+        Route::get('/schedules', [AdminClientReportController::class, 'listSchedules']);
+        Route::post('/schedules', [AdminClientReportController::class, 'saveSchedule']);
+        Route::post('/schedule', [AdminClientReportController::class, 'saveSchedule']); // alias for modal
+        Route::get('/schedules/{id}', [AdminClientReportController::class, 'showSchedule']);
+        Route::match(['put', 'post'], '/schedules/{id}/update', [AdminClientReportController::class, 'updateSchedule']);
+        Route::post('/schedules/{id}/toggle', [AdminClientReportController::class, 'toggleSchedule']);
+        Route::delete('/schedules/{id}', [AdminClientReportController::class, 'deleteSchedule']);
     });
 
     // In-House Admin / Staff & Permission Management Routes (Super Admin Access Only)
