@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Notification;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Notifications\PlatformNotification;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -160,45 +159,39 @@ class NotificationController extends Controller
     public function fetchAdminNotification(Request $request)
     {
         try {
-            // Group notifications by title, message, and type
-            $notifications = DB::table('notifications')
-                ->select(
-                    DB::raw('MIN(id) as id'),
-                    DB::raw('MAX(created_at) as sent_at'),
-                    DB::raw('JSON_UNQUOTE(JSON_EXTRACT(data, "$.title")) as title'),
-                    DB::raw('JSON_UNQUOTE(JSON_EXTRACT(data, "$.message")) as message'),
-                    DB::raw('JSON_UNQUOTE(JSON_EXTRACT(data, "$.type")) as type'),
-                    DB::raw('JSON_UNQUOTE(JSON_EXTRACT(data, "$.sent_to_label")) as sent_to'),
-                    DB::raw('COUNT(*) as recipients')
-                )
-                ->where('type','App\Notifications\AdminIconNotification')
-                ->groupByRaw('JSON_UNQUOTE(JSON_EXTRACT(data, "$.title")),
-                  JSON_UNQUOTE(JSON_EXTRACT(data, "$.message")),
-                  JSON_UNQUOTE(JSON_EXTRACT(data, "$.type")),
-                  JSON_UNQUOTE(JSON_EXTRACT(data, "$.sent_to_label"))')
-                ->orderBy('sent_at', 'desc')
+            $user = Auth::user();
+
+            $notifications = $user->notifications()
+                ->where('type', 'App\Notifications\AdminIconNotification')
+                ->latest()
                 ->get()
-                ->map(function ($n) {
+                ->map(function ($notification) {
+                    $data = $notification->data;
                     return [
-                        'id'          => $n->id,
-                        'title'       => $n->title,
-                        'message'     => $n->message,
-                        'type'        => ucfirst($n->type),
-                        'recipients'  => $n->recipients,
-                        'sent_to'     => $n->sent_to ?? 'All Users',
-                        'sent_at'     => $n->sent_at ? Carbon::parse($n->sent_at)->diffForHumans()  : null,
+                        'id'          => $notification->id,
+                        'title'       => $data['title'] ?? '',
+                        'message'     => $data['message'] ?? '',
+                        'type'        => ucfirst($data['type'] ?? 'Announcement'),
+                        'sent_at'     => $notification->created_at->format('Y-m-d h:i A'),
+                        'read_at'     => $notification->read_at ? $notification->read_at->format('Y-m-d h:i A') : null,
+                        'is_read'     => !is_null($notification->read_at),
                         'status'      => 'delivered',
                     ];
                 });
 
+            $unreadCount = $user->unreadNotifications()
+                ->where('type', 'App\Notifications\AdminIconNotification')
+                ->count();
+
             return response()->json([
-                'success' => true,
-                'total'   => $notifications->count(),
-                'data'    => $notifications,
+                'success'      => true,
+                'total'        => $notifications->count(),
+                'unread_count' => $unreadCount,
+                'data'         => $notifications,
             ], 200);
 
         } catch (\Exception $e) {
-            \Log::error('Notification grouping failed: '.$e->getMessage());
+            \Log::error('Notification fetch failed: '.$e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()
@@ -267,6 +260,54 @@ class NotificationController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to mark notification as unread.'
+            ], 500);
+        }
+    }
+
+    public function markAllAdminAsRead(Request $request)
+    {
+        try {
+            $user = Auth::user();
+
+            $updated = $user->notifications()
+                ->where('type', 'App\Notifications\AdminIconNotification')
+                ->whereNull('read_at')
+                ->update(['read_at' => now()]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'All admin notifications marked as read.',
+                'updated' => $updated,
+            ], 200);
+
+        } catch (\Exception $e) {
+            \Log::error('Notification mark all admin as read failed: '.$e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to mark all admin notifications as read.'
+            ], 500);
+        }
+    }
+
+    public function adminUnreadNotificationCount(Request $request)
+    {
+        try {
+            $user = Auth::user();
+
+            $unreadCount = $user->unreadNotifications()
+                ->where('type', 'App\Notifications\AdminIconNotification')
+                ->count();
+
+            return response()->json([
+                'success'      => true,
+                'unread_count' => $unreadCount,
+            ], 200);
+
+        } catch (\Exception $e) {
+            \Log::error('Admin unread notification count failed: '.$e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve unread notification count.'
             ], 500);
         }
     }

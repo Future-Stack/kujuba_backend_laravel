@@ -374,6 +374,14 @@ Route::prefix('admin/dashboard')->group(function () {
             Route::get('/notifications/unread-count', [NotificationController::class, 'unreadNotificationCount']);
         });
 
+        //Admin Notifications read/unread
+        Route::prefix('admin')->group(function () {
+            Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+            Route::post('/notifications/{id}/unread', [NotificationController::class, 'markAsUnread']);
+            Route::post('/notifications/read-all', [NotificationController::class, 'markAllAdminAsRead']);
+            Route::get('/notifications/unread-count', [NotificationController::class, 'adminUnreadNotificationCount']);
+        });
+
         //Fetch All Notifications Record (Admin)
         Route::get('/all-notifications',[NotificationController::class, 'fetchAllNotification']);
         Route::get('/admins-notifications',[NotificationController::class, 'fetchAdminNotification']);
