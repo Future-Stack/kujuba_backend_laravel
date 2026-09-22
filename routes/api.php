@@ -93,6 +93,8 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/my-inspections', [InspectionBookingController::class, 'index']);
 
+        Route::get('/homeowner-pending-bookings', [InspectionBookingController::class, 'homeownerPendingBookings']);
+
         Route::post('/booking/complete/{bookingId}', [InspectionBookingController::class, 'completeInspectionAndPayout']);
 
 
