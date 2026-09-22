@@ -134,7 +134,6 @@ class InspectionController extends Controller
             $user = Auth::user();
 
 
-
             // Base query with relationships
             $query = InspectionAssign::with([
                 'inspectionBooking:id,homeowner_id,property_address,property_type,property_img,scheduled_date,scheduled_time,urgent_status,status',

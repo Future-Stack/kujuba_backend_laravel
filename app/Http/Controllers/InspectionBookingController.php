@@ -102,6 +102,77 @@ class InspectionBookingController extends Controller
     }
 
 
+    public function homeownerPendingBookings(Request $request)
+    {
+        try {
+            $userId = auth()->id();
+
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized user contextual verification failed.'
+                ], 401);
+            }
+
+            $bookings = InspectionBooking::with(['inspectionTypes', 'payment'])
+                                    ->where('homeowner_id', $userId)
+                                    ->where('status', 'confirmed')
+                                    ->whereHas('payment', function ($q) {
+                                        $q->where('status', 'paid');
+                                    })
+                                    ->whereDoesntHave('inspectionAssign')
+                                    ->latest()
+                                    ->get();
+
+            $formattedData = $bookings->map(function ($booking) {
+                return [
+                    'id'               => $booking->id,
+                    'booking_uid'      => 'INS-' . (1000 + $booking->id),
+                    'property_address' => $booking->property_address,
+                    'property_type'    => $booking->property_type,
+                    'property_size'    => $booking->property_size,
+                    'note'             => $booking->note,
+                    'property_img'     => $booking->property_img ? asset('storage/' . $booking->property_img) : asset('defaults/placeholder.png'),
+                    'scheduled_date'   => $booking->scheduled_date ? $booking->scheduled_date->format('Y-m-d') : null,
+                    'scheduled_time'   => $booking->scheduled_time,
+                    'scheduled_shift'  => $booking->scheduled_shift,
+                    'urgent_status'    => (bool) $booking->urgent_status,
+                    'status'           => $booking->status,
+                    'isRescheduled'    => (int) $booking->isRescheduled,
+                    'payment' => $booking->payment ? [
+                        'subtotal'     => floatval($booking->payment->subtotal),
+                        'platform_fee' => floatval($booking->payment->platform_fee),
+                        'total'        => floatval($booking->payment->total),
+                        'trx_id'       => $booking->payment->trx_id,
+                        'status'       => $booking->payment->status,
+                    ] : null,
+                    'inspection_types' => $booking->inspectionTypes->map(function ($type) {
+                        return [
+                            'id'         => $type->id,
+                            'title'      => $type->title,
+                            'short_desc' => $type->short_desc,
+                            'price'      => floatval($type->price),
+                            'img'        => $type->img ? asset('storage/' . $type->img) : null,
+                        ];
+                    }),
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pending bookings list retrieved successfully.',
+                'count'   => $formattedData->count(),
+                'data'    => $formattedData
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch pending bookings: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function store(Request $request)
     {
         $request->validate([
