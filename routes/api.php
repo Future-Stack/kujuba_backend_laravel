@@ -95,6 +95,8 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/homeowner-pending-bookings', [InspectionBookingController::class, 'homeownerPendingBookings']);
 
+        Route::get('/homeowner-cancelled-bookings', [InspectionBookingController::class, 'homeownerCancelledBookings']);
+
         Route::post('/booking/complete/{bookingId}', [InspectionBookingController::class, 'completeInspectionAndPayout']);
 
 
@@ -303,7 +305,6 @@ Route::prefix('v1')->group(function () {
 Route::prefix('admin/dashboard')->group(function () {
     Route::get('/overview', [AdminDashboardController::class, 'overview']);
 });
-
 
 
 

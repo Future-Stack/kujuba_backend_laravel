@@ -44,6 +44,12 @@ class InspectionBooking extends Model
             ->where('payment_type', 'inspection_fee');
     }
 
+    public function refundPayment()
+    {
+        return $this->hasOne(InspectionPayment::class, 'inspection_booking_id')
+            ->where('payment_type', 'refund');
+    }
+
     // Multiple payments per booking
     public function payments()
     {
