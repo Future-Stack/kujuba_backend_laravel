@@ -116,7 +116,7 @@ class InspectionBookingController extends Controller
 
             $bookings = InspectionBooking::with(['inspectionTypes', 'payment'])
                                     ->where('homeowner_id', $userId)
-//                                    ->where('status', 'confirmed')
+//                                   ->where('status', 'confirmed')
                                     ->whereHas('payment', function ($q) {
                                         $q->where('status', 'paid');
                                     })
