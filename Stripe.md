@@ -75,7 +75,7 @@ Copy the whsec_ secret → update .env STRIPE_BOOKING_WEBHOOK_SECRET
 
 ### Terminal 4 — Cancel Webhook Listener
 ```bash
-stripe listen --forward-to http://localhost:8000/api/v1/booking/cancel-webhook-handle
+stripe listen --forward-to http://localhost:8000/api/v1/cancel-booking/webhook-handle
 Copy the whsec_ secret → update .env STRIPE_CANCEL_WEBHOOK_SECRET
 Then:
 bashphp artisan config:clear

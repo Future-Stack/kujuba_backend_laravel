@@ -48,7 +48,7 @@ class InspectionBookingRequestCotroller extends Controller
         ]);
 
         if ($request->urgent_status) {
-            $nowEst = now('America/New_York'); 
+            $nowEst = now('America/New_York');
             $todayEst = $nowEst->toDateString();
 
             // 1. Same day check
@@ -244,7 +244,7 @@ class InspectionBookingRequestCotroller extends Controller
             ], 500);
         }
     }
-    
+
     // public function store(Request $request)
     // {
     //     $request->validate([
@@ -630,7 +630,7 @@ class InspectionBookingRequestCotroller extends Controller
         try {
             $filter = $request->query('filter');
             $user = Auth::user()->load('profile');
-            
+
             $inspectorLat = $user->profile?->latitude;
             $inspectorLng = $user->profile?->longitude;
             $maxDistanceKm = 50.0;
@@ -644,10 +644,10 @@ class InspectionBookingRequestCotroller extends Controller
                 ->whereDoesntHave('inspectionAssign');
 
             if (!is_null($inspectorLat) && !is_null($inspectorLng)) {
-                
+
                 // Haversine formula (6371 km) calculating distance between inspector profile and inspection_bookings location
-                $haversineSql = "(6371 * acos(least(1.0, greatest(-1.0, 
-                    cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) 
+                $haversineSql = "(6371 * acos(least(1.0, greatest(-1.0,
+                    cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?))
                     + sin(radians(?)) * sin(radians(latitude))
                 ))))";
 
@@ -677,8 +677,8 @@ class InspectionBookingRequestCotroller extends Controller
                 $img = $booking->inspectionTypes->pluck('img')->toArray();
                 $price = $booking->inspectionTypes->pluck('price')->toArray();
 
-                $distanceFormatted = isset($booking->distance_km) 
-                    ? round($booking->distance_km, 1) . ' km' 
+                $distanceFormatted = isset($booking->distance_km)
+                    ? round($booking->distance_km, 1) . ' km'
                     : null;
 
                 return [
@@ -898,6 +898,9 @@ class InspectionBookingRequestCotroller extends Controller
             $refund = $stripe->refunds->create([
                 'payment_intent' => $payment->stripe_id,
                 'amount'         => intval($refundAmount * 100),
+                'metadata'       => [
+                    'booking_id' => $booking->id,
+                ],
             ]);
 
             $refundPayment = InspectionPayment::create([
@@ -910,17 +913,17 @@ class InspectionBookingRequestCotroller extends Controller
                 'total'                 => $refundAmount,
                 'payment_type'          => 'refund',
                 'trx_id'                => $refund->id,
-                'status'                => 'pending', 
+                'status'                => 'pending',
                 'stripe_id'             => $payment->stripe_id,
                 'penalty_amount'        => $cancellationFee,
                 'refunded_amount'       => $refundAmount,
                 'is_disbursed'          => false,
             ]);
 
-            $booking->update([
-                'status' => 'cancelled',
-                'cancellation_notes' => $request->cancellation_notes,
-            ]);
+//            $booking->update([
+//                'status' => 'cancelled',
+//                'cancellation_notes' => $request->cancellation_notes,
+//            ]);
 
             DB::commit();
 
@@ -1043,6 +1046,21 @@ class InspectionBookingRequestCotroller extends Controller
 
                 $charge = $event->data->object;
                 $paymentIntentId = $charge->payment_intent;
+                $booking_id = $charge->metadata->booking_id ?? null;
+
+                // 2. Fallback: If metadata was passed during $stripe->refunds->create()
+                if (!$booking_id && !empty($charge->refunds->data)) {
+                    $latestRefund = $charge->refunds->data[0];
+                    $booking_id = $latestRefund->metadata->booking_id ?? null;
+                }
+
+                Log::info("Booking ID extracted: " . ($booking_id ?? 'null'));
+
+                if ($booking_id) {
+                    InspectionBooking::where('id', $booking_id)->update([
+                        'status'  => 'cancelled',
+                    ]);
+                }
 
                 $payment = InspectionPayment::where('stripe_id', $paymentIntentId)
                     ->where('payment_type', 'refund')
