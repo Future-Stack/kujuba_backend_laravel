@@ -63,35 +63,6 @@
             width: 110px;
         }
 
-        /* Summary Cards Table */
-        .cards-table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 8px 0;
-            margin-bottom: 20px;
-        }
-        .cards-table td {
-            background-color: #f1f5f9;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            padding: 10px 12px;
-            text-align: center;
-            width: 20%;
-        }
-        .card-num {
-            font-size: 18px;
-            font-weight: bold;
-            color: #0f172a;
-            margin-bottom: 2px;
-        }
-        .card-label {
-            font-size: 9px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #64748b;
-            font-weight: 600;
-        }
-
         /* Inspections Table */
         .data-table {
             width: 100%;
@@ -191,32 +162,6 @@
             <td>{{ ucfirst(str_replace('_', ' ', $report['client']['client_type'] ?? 'Insurance Company')) }}</td>
             <td class="info-label">Client Email:</td>
             <td>{{ $report['client']['email'] ?? 'N/A' }} | {{ $report['client']['phone'] ?? 'N/A' }}</td>
-        </tr>
-    </table>
-
-    <!-- Summary Metrics Cards -->
-    <table class="cards-table">
-        <tr>
-            <td>
-                <div class="card-num">{{ $report['summary']['total_inspections'] ?? 0 }}</div>
-                <div class="card-label">Total Bookings</div>
-            </td>
-            <td>
-                <div class="card-num" style="color: #16a34a;">{{ $report['summary']['completed_inspections'] ?? 0 }}</div>
-                <div class="card-label">Completed & Ready</div>
-            </td>
-            <td>
-                <div class="card-num" style="color: #0284c7;">{{ $report['summary']['in_progress_inspections'] ?? 0 }}</div>
-                <div class="card-label">In Progress</div>
-            </td>
-            <td>
-                <div class="card-num" style="color: #d97706;">{{ $report['summary']['pending_inspections'] ?? 0 }}</div>
-                <div class="card-label">Pending Schedule</div>
-            </td>
-            <td>
-                <div class="card-num" style="color: #4f46e5;">{{ $report['summary']['completion_rate'] ?? '0%' }}</div>
-                <div class="card-label">Completion Rate</div>
-            </td>
         </tr>
     </table>
 
