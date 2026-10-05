@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 
+const require = createRequire(import.meta.url);
 
 export default defineConfig({
     plugins: [
