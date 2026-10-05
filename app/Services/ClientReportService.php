@@ -37,7 +37,10 @@ class ClientReportService
             ];
 
             $bookingsQuery = InspectionBooking::where('client_id', $clientId)
-                ->whereBetween('booking_date', [$dateRange['start'], $dateRange['end']])
+                ->where(function ($q) use ($dateRange) {
+                    $q->whereBetween('scheduled_date', [$dateRange['start'], $dateRange['end']])
+                      ->orWhereBetween('booking_date', [$dateRange['start'], $dateRange['end']]);
+                })
                 ->with([
                     'homeowner.profile',
                     'inspectionTypes',
@@ -55,7 +58,10 @@ class ClientReportService
                 'address'      => 'All Territories',
             ];
 
-            $bookingsQuery = InspectionBooking::whereBetween('booking_date', [$dateRange['start'], $dateRange['end']])
+            $bookingsQuery = InspectionBooking::where(function ($q) use ($dateRange) {
+                    $q->whereBetween('scheduled_date', [$dateRange['start'], $dateRange['end']])
+                      ->orWhereBetween('booking_date', [$dateRange['start'], $dateRange['end']]);
+                })
                 ->with([
                     'homeowner.profile',
                     'inspectionTypes',
@@ -119,7 +125,7 @@ class ClientReportService
                 'cancelled_inspections'   => $cancelledCount,
                 'completion_rate'         => $totalCount > 0 ? round(($completedCount / $totalCount) * 100, 1) . '%' : '0%',
             ],
-            'inspections' => $inspectionsList,
+            'inspections' => $inspectionsList->toArray(),
         ];
 
         return [
